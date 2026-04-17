@@ -21,6 +21,7 @@ const STORAGE_GANHOS        = "bibly_registros";
 const STORAGE_PLANILHA      = "bibly_planilha";
 const STORAGE_PLANILHA_RAW  = "bibly_planilha_raw";
 const STORAGE_PLANILHA_SALVA= "bibly_planilha_salva";
+const STORAGE_NEGOCIOS      = "bibly_negocios";
 
 function storageGet(key) {
   try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : null; } catch { return null; }
@@ -311,12 +312,15 @@ function StatusMeta({clientesTotal, dadosAbril, onAddGanho, onRemoveGanho, onSal
       <div className="grid grid-cols-3 gap-3">
         {[{label:"META 1",val:metas.m1,cor:"#fbbf24"},{label:"META 2",val:metas.m2,cor:"#f87171"},{label:"META 3 ★",val:metas.m3,cor:"#f87171"}].map(({label,val,cor})=>{
           const n=nec(val);
+          const falta=Math.max(val-clientesTotal,0);
           return(<div key={label} className="rounded-xl p-4" style={{backgroundColor:"#0f0f18",border:`1px solid ${BORDER}`}}>
             <p className="text-xs font-bold tracking-wide mb-0.5" style={{color:"#94a3b8"}}>{label}</p>
             <p className="text-xs" style={{color:"#64748b"}}>{val} fechamentos</p>
             <p className="text-3xl font-extrabold mt-2" style={{color:n===0?"#4ade80":cor}}>
               {n===0?"✓":n.toFixed(1)}{n>0&&<span className="text-base font-normal ml-1" style={{color:"#64748b"}}>/dia</span>}
             </p>
+            {falta>0&&<p className="text-xs mt-1.5 font-semibold" style={{color:"#94a3b8"}}>Falta <span style={{color:cor,fontWeight:800}}>{falta}</span> pra meta</p>}
+            {falta===0&&<p className="text-xs mt-1.5 font-semibold" style={{color:"#4ade80"}}>✓ Meta atingida!</p>}
           </div>);
         })}
       </div>
@@ -494,6 +498,96 @@ function EvolucaoMensal({abrilAtual}){
   );
 }
 
+// ─── NEGÓCIOS DO MÊS ─────────────────────────────────────────
+const NEGOCIOS_DEFAULT = { aberto: "", perdido: "", ganho: "", obs: "" };
+
+function NegociosMes() {
+  const [dados, setDados] = useState(() => storageGet(STORAGE_NEGOCIOS) ?? NEGOCIOS_DEFAULT);
+  const [editando, setEditando] = useState(false);
+  const [form, setForm] = useState(dados);
+  const [salvo, setSalvo] = useState(false);
+
+  const handleSalvar = () => {
+    storageSet(STORAGE_NEGOCIOS, form);
+    setDados(form);
+    setEditando(false);
+    setSalvo(true);
+    setTimeout(() => setSalvo(false), 2500);
+  };
+
+  const handleCancelar = () => { setForm(dados); setEditando(false); };
+
+  const total = (parseInt(dados.aberto)||0) + (parseInt(dados.perdido)||0) + (parseInt(dados.ganho)||0);
+  const taxaGanho = total > 0 ? Math.round(((parseInt(dados.ganho)||0)/total)*100) : 0;
+
+  const inp = { width:"100%", boxSizing:"border-box", padding:"8px 10px", backgroundColor:"#0a0a14", border:"1px solid rgba(168,85,247,0.25)", borderRadius:8, color:"#fff", fontSize:13, outline:"none" };
+
+  return (
+    <div className="rounded-2xl p-5 space-y-4" style={{backgroundColor:CARD_BG,border:`1px solid ${BORDER}`}}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <BarChart2 size={15} style={{color:ACCENT}}/>
+          <p className="text-xs font-bold uppercase tracking-widest" style={{color:"#64748b"}}>Negócios do Mês</p>
+          {salvo && <span className="text-xs font-semibold" style={{color:"#4ade80"}}>✓ Salvo!</span>}
+        </div>
+        {!editando
+          ? <button onClick={()=>{setForm(dados);setEditando(true);}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold" style={{backgroundColor:"#2e1065",color:ACCENT,border:`1px solid ${ACCENT_DIM}`,cursor:"pointer"}}><Edit3 size={11}/> Editar</button>
+          : <div className="flex gap-2">
+              <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold" style={{backgroundColor:"#3f1515",color:"#f87171",border:"1px solid #4c1d2a",cursor:"pointer"}}><X size={11}/> Cancelar</button>
+              <button onClick={handleSalvar} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold" style={{backgroundColor:"#14532d",color:"#4ade80",border:"1px solid #166534",cursor:"pointer"}}><Save size={11}/> Salvar</button>
+            </div>
+        }
+      </div>
+
+      {editando ? (
+        <div className="space-y-3">
+          <p className="text-xs" style={{color:"#475569"}}>Insira os dados dos negócios iniciados neste mês:</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[{key:"aberto",label:"Aberto (c/ closer)",cor:"#f59e0b"},{key:"perdido",label:"Perdido",cor:"#f87171"},{key:"ganho",label:"Ganho (pagou)",cor:"#4ade80"}].map(({key,label,cor})=>(
+              <div key={key}>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:cor,marginBottom:5,letterSpacing:"0.05em",textTransform:"uppercase"}}>{label}</label>
+                <input type="number" min="0" value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} placeholder="0" style={inp}/>
+              </div>
+            ))}
+          </div>
+          <div>
+            <label style={{display:"block",fontSize:11,fontWeight:600,color:"#94a3b8",marginBottom:5,letterSpacing:"0.05em",textTransform:"uppercase"}}>Observação (opcional)</label>
+            <textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Mês com muitos leads de alta qualidade..." rows={2} style={{...inp,resize:"none"}}/>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {(dados.aberto||dados.perdido||dados.ganho) ? (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                {[{key:"aberto",label:"Aberto",sub:"c/ closer no pós-reunião",cor:"#f59e0b",bg:"#451a00"},{key:"perdido",label:"Perdido",sub:"closer deu perdido",cor:"#f87171",bg:"#3f1515"},{key:"ganho",label:"Ganho",sub:"cliente pagou",cor:"#4ade80",bg:"#052e16"}].map(({key,label,sub,cor,bg})=>(
+                  <div key={key} className="rounded-xl p-4 text-center" style={{backgroundColor:bg,border:`1px solid ${cor}30`}}>
+                    <p className="text-xs font-semibold mb-1" style={{color:cor,textTransform:"uppercase",letterSpacing:"0.05em"}}>{label}</p>
+                    <p className="text-3xl font-extrabold" style={{color:cor}}>{parseInt(dados[key])||0}</p>
+                    <p className="text-xs mt-1" style={{color:`${cor}80`}}>{sub}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap" style={{backgroundColor:"#0f0f18",border:`1px solid ${BORDER}`}}>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs" style={{color:"#64748b"}}>Total de negócios: <span className="font-bold text-white">{total}</span></span>
+                  <span className="text-xs" style={{color:"#64748b"}}>Taxa de ganho: <span className="font-bold" style={{color:"#4ade80"}}>{taxaGanho}%</span></span>
+                </div>
+                {dados.obs && <span className="text-xs italic" style={{color:"#475569"}}>"{dados.obs}"</span>}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl px-4 py-5 flex flex-col items-center gap-2" style={{backgroundColor:"#0a0a14",border:`1px dashed ${BORDER}`}}>
+              <p className="text-xs" style={{color:"#475569"}}>Nenhum dado inserido ainda.</p>
+              <button onClick={()=>{setForm(dados);setEditando(true);}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold" style={{backgroundColor:"#2e1065",color:ACCENT,border:`1px solid ${ACCENT_DIM}`,cursor:"pointer"}}><Plus size={11}/> Inserir dados</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TabResultados({abrilAtual,diarioAtual}){
   const [registros,setRegistros]=useState(()=>storageGet(STORAGE_GANHOS)??[]);
   const [salvo,setSalvo]=useState(false);
@@ -527,6 +621,7 @@ function TabResultados({abrilAtual,diarioAtual}){
         <MetricCard title="Taxa de Conversão" value={`${abrilAtual.conversao}%`} sub="→ Fechamentos sobre OPPs" icon={Award} iconColor="#f59e0b"/>
       </div>
       <EvolucaoChart diario={diarioAtual} metaM3={abrilAtual.metas.m3} diasTotal={abrilAtual.diasTotal}/>
+      <NegociosMes/>
       <EvolucaoPerformance/>
     </div>
   );
@@ -1387,6 +1482,15 @@ function Dashboard({onLogout}){
     if(s?.dados)return s.dados;
     return storageGet(STORAGE_PLANILHA);
   });
+
+  // Re-sync from storage whenever user switches back to resultados or acompanhamento
+  useEffect(()=>{
+    if(aba==="resultados"||aba==="acompanhamento"){
+      const s=storageGet(STORAGE_PLANILHA_SALVA);
+      const dados=s?.dados??storageGet(STORAGE_PLANILHA);
+      if(dados)setDadosPlanilha(dados);
+    }
+  },[aba]);
   useEffect(()=>{
     const fn=()=>setScrolled(window.scrollY>10);
     window.addEventListener("scroll",fn); return()=>window.removeEventListener("scroll",fn);
