@@ -259,54 +259,141 @@ function RegistroManual({registros,onAdd,onRemove,onSalvar,salvo}){
   );
 }
 
-function calcFechamentosSemana(clientesTotal, metas, diasTotal, diasUteisRest){
-  // Calcula dias úteis restantes na semana (seg-sex)
-  const hoje = new Date();
-  const diaSemana = hoje.getDay(); // 0=dom, 6=sab
-  const diasRestantesSemana = diaSemana === 0 ? 0 : diaSemana === 6 ? 0 : 5 - diaSemana;
-  const necessarioM3 = Math.max(Math.ceil((metas.m3 - clientesTotal) / Math.max(diasUteisRest, 1) * diasRestantesSemana), 0);
-  return {diasRestantesSemana, necessarioM3};
+const FERIADOS_2026 = [
+  "2026-01-01","2026-04-03","2026-04-05","2026-04-21",
+  "2026-05-01","2026-06-04","2026-09-07","2026-10-12",
+  "2026-11-02","2026-11-15","2026-11-20","2026-12-25",
+];
+
+function isDiaUtil(d) {
+  const dia = d.getDay();
+  if (dia === 0 || dia === 6) return false;
+  const iso = d.toISOString().slice(0,10);
+  return !FERIADOS_2026.includes(iso);
 }
 
+function calcDiasUteisRestantes() {
+  const hoje = new Date();
+  const fimMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+  let count = 0;
+  for (let d = new Date(hoje); d <= fimMes; d.setDate(d.getDate()+1)) {
+    if (isDiaUtil(d)) count++;
+  }
+  return count;
+}
+
+function getInicioSemana() {
+  // Retorna a segunda-feira da semana atual (meia-noite)
+  const hoje = new Date();
+  const diaSemana = hoje.getDay(); // 0=dom, 1=seg...
+  const diff = diaSemana === 0 ? -6 : 1 - diaSemana; // volta pra segunda
+  const seg = new Date(hoje);
+  seg.setDate(hoje.getDate() + diff);
+  seg.setHours(0,0,0,0);
+  return seg;
+}
+
+function calcFechamentosSemana(clientesTotal, metas, diasTotal, diasUteisRest) {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay();
+  const hora = hoje.getHours();
+
+  // Dias úteis restantes na semana (hoje inclusive se antes das 18h)
+  let diasRestantesSemana = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(hoje);
+    d.setDate(hoje.getDate() + i);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    if (!isDiaUtil(d)) continue;
+    // hoje só conta se antes das 18h
+    if (i === 0 && hora >= 18) continue;
+    // só conta dias até sexta desta semana
+    const diffSeg = d.getDay() >= 1 && d.getDay() <= 5;
+    // para quando chegar na próxima semana
+    const inicioSemana = getInicioSemana();
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate() + 4); // sexta
+    if (d > fimSemana) break;
+    diasRestantesSemana++;
+  }
+
+  // Ritmo necessário por semana baseado nos dias úteis do mês
+  const diasUteisNoMes = 22; // média mensal
+  const fechPorSemana = Math.ceil((metas.m3 / diasUteisNoMes) * 5);
+
+  // Fechamentos feitos ESSA semana: usa localStorage para persistir por semana
+  const chave = `bibly_semana_${getInicioSemana().toISOString().slice(0,10)}`;
+  const feitosEstaSemana = storageGet(chave) ?? 0;
+
+  const necessarioM3 = Math.max(fechPorSemana - feitosEstaSemana, 0);
+  const semanaEncerrada = diaSemana === 0 || diaSemana === 6 || (diaSemana === 5 && hora >= 18);
+
+  return { diasRestantesSemana, necessarioM3, semanaEncerrada, fechPorSemana, feitosEstaSemana, chaveStorage: chave };
+}
+
+function getSaudacaoStatus(emRitmo, forecastNivel, necessarioM3, semanaEncerrada, feitosEstaSemana, fechPorSemana) {
+  const h = new Date().getHours();
+  const periodo = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+
+  if (semanaEncerrada) return null;
+
+  if (emRitmo) {
+    if (necessarioM3 === 0) {
+      return { texto: `${periodo} — você já garantiu o forecast da ${forecastNivel} essa semana`, cor: ACCENT };
+    }
+    return { texto: `${periodo} — você precisa fechar mais ${necessarioM3} essa semana para permanecer no forecast da 3`, cor: ACCENT };
+  } else {
+    return { texto: `${periodo} — você precisa fechar mais ${necessarioM3} essa semana para retornar ao forecast da 3`, cor: "#f87171" };
+  }
+}
+
+
 function StatusMeta({clientesTotal, dadosAbril, onAddGanho, onRemoveGanho, onSalvarGanho, onSalvoGanho}){
-  const metas=dadosAbril.metas, diaAtual=dadosAbril.diaAtual, diasTotal=dadosAbril.diasTotal, diasUteisRest=dadosAbril.diasUteisRestantes;
+  const metas=dadosAbril.metas, diaAtual=dadosAbril.diaAtual, diasTotal=dadosAbril.diasTotal;
+  const diasUteisRest = calcDiasUteisRestantes();
   const projecaoFinal=Math.round((clientesTotal/diaAtual)*diasTotal);
   const esperadoHoje=Math.round((metas.m3/diasTotal)*diaAtual);
   const emRitmo=clientesTotal>=esperadoHoje;
   const pctRitmo=esperadoHoje>0?(clientesTotal/esperadoHoje)*100:0;
   const forecastNivel=pctRitmo>=100?3:pctRitmo>=80?2:1;
   const nec=(meta)=>Math.max(Math.ceil(((meta-clientesTotal)/diasUteisRest)*10)/10,0);
-  const {diasRestantesSemana, necessarioM3} = calcFechamentosSemana(clientesTotal, metas, diasTotal, diasUteisRest);
+  const {diasRestantesSemana, necessarioM3, semanaEncerrada, fechPorSemana, feitosEstaSemana} = calcFechamentosSemana(clientesTotal, metas, diasTotal, diasUteisRest);
+  const saudacao = getSaudacaoStatus(emRitmo, forecastNivel, necessarioM3, semanaEncerrada, feitosEstaSemana, fechPorSemana);
   return(
     <div className="rounded-2xl p-6 space-y-5" style={{backgroundColor:CARD_BG,border:`1px solid ${BORDER}`}}>
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2"><Target size={15} style={{color:ACCENT}}/><p className="text-xs font-bold uppercase tracking-widest" style={{color:"#64748b"}}>Meta do Mês — Abril · Status</p></div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs" style={{color:"#64748b"}}>Dia <span className="font-bold text-white">{diaAtual}</span> de {diasTotal}</span>
-          <span className="text-xs font-bold px-3 py-1 rounded-full" style={{backgroundColor:emRitmo?"#2e1065":"#3f1515",color:emRitmo?ACCENT:"#f87171",border:`1px solid ${emRitmo?ACCENT:"#f87171"}`}}>{emRitmo?"No Ritmo":"Atrasado"}</span>
-        </div>
+        <span className="text-xs font-bold px-3 py-1 rounded-full" style={{backgroundColor:emRitmo?"#2e1065":"#3f1515",color:emRitmo?ACCENT:"#f87171",border:`1px solid ${emRitmo?ACCENT:"#f87171"}`}}>{emRitmo?"No Ritmo":"Atrasado"}</span>
       </div>
+      {saudacao && <span className="text-xs font-medium" style={{color: saudacao.cor}}>{saudacao.texto}</span>}
       <div className="flex items-baseline gap-3">
         <span className="text-6xl font-extrabold text-white">{clientesTotal}</span>
         <span className="text-2xl font-light" style={{color:"#475569"}}>/ {metas.m3}</span>
         <span className="ml-auto text-sm" style={{color:"#64748b"}}>Forecast atual: <span className="font-bold text-white">{forecastNivel}</span></span>
       </div>
-      <div className="relative" style={{paddingTop:28,paddingBottom:24}}>
+      <div className="relative" style={{paddingTop:28,paddingBottom:48}}>
+        {/* Marcadores M1 e M2 */}
         {[{label:"M1",val:metas.m1},{label:"M2",val:metas.m2}].map(({label,val})=>(
           <div key={label} className="absolute flex flex-col items-center" style={{left:`${pct(val,metas.m3)}%`,top:0,transform:"translateX(-50%)"}}>
             <span className="text-xs" style={{color:"#64748b"}}>{label}</span>
             <div style={{width:1,height:20,backgroundColor:"#334155"}}/>
           </div>
         ))}
-        <div className="absolute flex flex-col items-center" style={{left:`${pct(esperadoHoje,metas.m3)}%`,top:0,transform:"translateX(-50%)",zIndex:10}}>
-          <span className="text-sm font-bold" style={{color:"#f59e0b"}}>{esperadoHoje}</span>
+        {/* Marcador amarelo — posição = clientesTotal */}
+        <div className="absolute flex flex-col items-center" style={{left:`${Math.min(pct(clientesTotal,metas.m3),100)}%`,top:0,transform:"translateX(-50%)",zIndex:10,transition:"left 0.7s ease"}}>
+          <span className="text-sm font-bold" style={{color:"#f59e0b"}}>{clientesTotal}</span>
           <div style={{width:1,height:20,backgroundColor:"#f59e0b"}}/>
         </div>
+        {/* Barra */}
         <div style={{width:"100%",borderRadius:999,overflow:"hidden",height:10,backgroundColor:"#1e1b2e"}}>
           <div style={{height:"100%",borderRadius:999,transition:"width 0.7s",width:`${pct(clientesTotal,metas.m3)}%`,backgroundColor:ACCENT}}/>
         </div>
-        <div className="absolute" style={{left:`${pct(esperadoHoje,metas.m3)}%`,top:"100%",transform:"translateX(-50%)",marginTop:2}}>
-          <span className="text-xs whitespace-nowrap font-semibold" style={{color:"#f59e0b"}}>Você está no forecast da {forecastNivel}</span>
+        {/* Texto embaixo — dinâmico, colado na linha */}
+        <div style={{position:"absolute",left:`${Math.min(pct(clientesTotal,metas.m3),100)}%`,top:52,transform:"translateX(-50%)",transition:"left 0.7s ease",whiteSpace:"nowrap"}}>
+          {emRitmo
+            ? <span style={{fontSize:11,fontWeight:600,color:"#f59e0b"}}>Você está no forecast da {forecastNivel}</span>
+            : <span style={{fontSize:11,fontWeight:600,color:"#f87171"}}>Feche mais {Math.ceil(esperadoHoje - clientesTotal)} pra voltar ao forecast da 3</span>
+          }
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
@@ -325,33 +412,33 @@ function StatusMeta({clientesTotal, dadosAbril, onAddGanho, onRemoveGanho, onSal
         })}
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{backgroundColor:"#0f0f18",border:`1px solid ${BORDER}`}}>
+        <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{backgroundColor:"#0f0f18",border:`1px solid ${BORDER}`}}>
           <span className="text-xs font-bold uppercase tracking-wide" style={{color:"#64748b"}}>Projeção Final</span>
-          <span className="text-3xl font-extrabold" style={{color:projecaoFinal>=metas.m3?"#4ade80":"#f87171"}}>{projecaoFinal}</span>
-          <span style={{color:"#475569"}}>/ {metas.m3}</span>
+          <span className="text-lg font-extrabold" style={{color:projecaoFinal>=metas.m3?"#4ade80":"#f87171"}}>{projecaoFinal}</span>
+          <span className="text-xs" style={{color:"#475569"}}>/ {metas.m3}</span>
         </div>
-        <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{backgroundColor:"#0f0f18",border:`1px solid ${BORDER}`}}>
+        <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{backgroundColor:"#0f0f18",border:`1px solid ${BORDER}`}}>
           <span className="text-xs font-bold uppercase tracking-wide" style={{color:"#64748b"}}>Dias Restantes</span>
-          <span className="text-3xl font-extrabold text-white">{diasUteisRest}</span>
-          <span style={{color:"#475569"}}>úteis</span>
+          <span className="text-lg font-extrabold text-white">{diasUteisRest}</span>
+          <span className="text-xs" style={{color:"#475569"}}>úteis</span>
         </div>
       </div>
 
-      {/* Mensagem semanal automática */}
-      {diasRestantesSemana > 0 && (
-        <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
-          style={{backgroundColor:"#0f0f18", border:`1px solid ${BORDER}`}}>
-          <div className="flex items-center gap-2">
-            <Calendar size={13} style={{color: necessarioM3 === 0 ? "#4ade80" : ACCENT, flexShrink:0}}/>
-            <p className="text-xs font-semibold" style={{color: necessarioM3 === 0 ? "#4ade80" : "#e2e8f0"}}>
-              {necessarioM3 === 0
-                ? "✓ Você já atingiu a Meta 3 esta semana!"
-                : `Feche mais ${necessarioM3} essa semana para permanecer no forecast da 3`}
-            </p>
-          </div>
-          <span className="text-xs" style={{color:"#475569"}}>{diasRestantesSemana} dia(s) esta semana</span>
+      {/* Bloco forecast da semana */}
+      <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
+        style={{backgroundColor:"transparent", border:`1px solid ${BORDER}`}}>
+        <div className="flex items-center gap-2">
+          <Calendar size={13} style={{color: semanaEncerrada ? "#818cf8" : necessarioM3 === 0 ? "#4ade80" : ACCENT, flexShrink:0}}/>
+          <p className="text-xs font-semibold" style={{color: semanaEncerrada ? "#818cf8" : necessarioM3 === 0 ? "#4ade80" : "#e2e8f0"}}>
+            {semanaEncerrada
+              ? "Final de semana chegou, procure descansar"
+              : necessarioM3 === 0
+                ? `✓ Meta da semana batida! (${feitosEstaSemana}/${fechPorSemana} fechamentos)`
+                : `Você precisa fechar mais ${necessarioM3} pra permanecer no forecast da 3`}
+          </p>
         </div>
-      )}
+        {!semanaEncerrada && <span className="text-xs" style={{color:"#475569"}}>{feitosEstaSemana}/{fechPorSemana} esta semana · {diasRestantesSemana} dia(s)</span>}
+      </div>
 
       {/* Botão +1 ganho dentro do quadro */}
       {onAddGanho && (
@@ -597,11 +684,17 @@ function TabResultados({abrilAtual,diarioAtual}){
     const dataHoje=new Date().toLocaleDateString("pt-BR");
     const nova=[...registros,{data:dataHoje,quantidade:1,obs:"Ajuste rapido",id:_nextId++}];
     setRegistros(nova); storageSet(STORAGE_GANHOS,nova);
+    // atualiza contador da semana
+    const chave=`bibly_semana_${getInicioSemana().toISOString().slice(0,10)}`;
+    storageSet(chave,(storageGet(chave)??0)+1);
   };
   const handleRemoveGanho=()=>{
     if(registros.length===0)return;
     const nova=registros.slice(0,-1);
     setRegistros(nova); storageSet(STORAGE_GANHOS,nova);
+    // decrementa contador da semana
+    const chave=`bibly_semana_${getInicioSemana().toISOString().slice(0,10)}`;
+    storageSet(chave,Math.max((storageGet(chave)??0)-1,0));
   };
   const handleSalvarGanhos=()=>{ storageSet(STORAGE_GANHOS,registros); setSalvo(true); setTimeout(()=>setSalvo(false),3000); };
   return(
@@ -609,6 +702,7 @@ function TabResultados({abrilAtual,diarioAtual}){
       <div className="grid grid-cols-1 gap-4 items-start">
         <StatusMeta clientesTotal={clientesStatus} dadosAbril={abrilAtual} onAddGanho={handleAddGanho} onRemoveGanho={handleRemoveGanho} onSalvarGanho={handleSalvarGanhos} onSalvoGanho={salvo}/>
       </div>
+      <EvolucaoChart diario={diarioAtual} metaM3={abrilAtual.metas.m3} diasTotal={abrilAtual.diasTotal}/>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricCard title="Novos Leads — Abril" value={abrilAtual.leads} sub={`→ Até ${abrilAtual.atualizadoAte}`} icon={Users}/>
         <MetricCard title="OPPs — Abril" value={abrilAtual.opps} sub={`→ Até ${abrilAtual.atualizadoAte}`} icon={Target} iconColor="#818cf8"/>
@@ -620,8 +714,6 @@ function TabResultados({abrilAtual,diarioAtual}){
         <MetricCard title="WhatsApp Opps" value={abrilAtual.whatsapp} sub={`→ Até ${abrilAtual.atualizadoAte}`} icon={MessageSquare} iconColor="#34d399"/>
         <MetricCard title="Taxa de Conversão" value={`${abrilAtual.conversao}%`} sub="→ Fechamentos sobre OPPs" icon={Award} iconColor="#f59e0b"/>
       </div>
-      <EvolucaoChart diario={diarioAtual} metaM3={abrilAtual.metas.m3} diasTotal={abrilAtual.diasTotal}/>
-      <NegociosMes/>
       <EvolucaoPerformance/>
     </div>
   );
