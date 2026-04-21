@@ -518,7 +518,7 @@ function StatusMeta({clientesTotal, dadosAbril, onAddGanho, onRemoveGanho, onSal
         <div style={{position:"absolute",left:`${Math.min(pct(clientesTotal,metas.m3),100)}%`,top:52,transform:"translateX(-50%)",transition:"left 0.7s ease",whiteSpace:"nowrap"}}>
           {emRitmo
             ? <span style={{fontSize:11,fontWeight:600,color:"#f59e0b"}}>Você está no forecast da {forecastNivel}</span>
-            : <span style={{fontSize:11,fontWeight:600,color:"#f87171"}}>Feche mais {Math.ceil(esperadoHoje - clientesTotal)} pra voltar ao forecast da 3</span>
+            : null
           }
         </div>
       </div>
@@ -830,24 +830,6 @@ function TabResultados({abrilAtual,diarioAtual,humorKey}){
   return(
     <div className="space-y-6">
       {/* Aviso de reuniões de hoje */}
-      {reunioesHoje !== null && (()=>{
-        const rc=reunioesHoje.filter(r=>!isCompromissoPessoal(r.titulo));
-        return(
-          <div style={{
-            display:"flex", alignItems:"center", gap:12, padding:"12px 18px",
-            borderRadius:14, border:`1px solid ${rc.length > 0 ? "rgba(168,85,247,0.35)" : "rgba(100,116,139,0.2)"}`,
-            backgroundColor: rc.length > 0 ? "rgba(168,85,247,0.08)" : "rgba(15,15,24,0.6)",
-          }}>
-            <Calendar size={15} style={{color: rc.length > 0 ? ACCENT : "#475569", flexShrink:0}}/>
-            <p style={{fontSize:13, fontWeight:600, color: rc.length > 0 ? "#e2e8f0" : "#475569", margin:0}}>
-              {rc.length > 0
-                ? <>Hoje você tem <span style={{color:ACCENT,fontWeight:800}}>{rc.length} reunião{rc.length!==1?"s":""}</span> agendada{rc.length!==1?"s":""}.</>
-                : "Nenhuma reunião de cliente agendada para hoje."
-              }
-            </p>
-          </div>
-        );
-      })()}
       <div className="grid grid-cols-1 gap-4 items-start">
         <StatusMeta clientesTotal={clientesStatus} dadosAbril={abrilAtual} onAddGanho={handleAddGanho} onRemoveGanho={handleRemoveGanho} onSalvarGanho={handleSalvarGanhos} onSalvoGanho={salvo}/>
       </div>
@@ -2434,7 +2416,6 @@ function TabReunioes(){
 
 const TABS=[
   {id:"resultados",label:"Metas",icon:Target},
-  {id:"calendario",label:"Calendário",icon:Calendar},
   {id:"dados",label:"Dados",icon:BarChart2},
   {id:"lideranca",label:"Estudos",icon:Star},
   {id:"carreira",label:"Trilha de Carreira",icon:Rocket},
@@ -3064,7 +3045,6 @@ function Dashboard({ onLogout }) {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
             <h1 style={{ fontSize: 26, fontWeight: 900, color: "#fff", letterSpacing: "-0.5px", margin: 0 }}>
               {aba === "resultados" && "Metas do Mês"}
-              {aba === "calendario" && "Calendário"}
               {aba === "dados" && "Dados e Planilha"}
               {aba === "lideranca" && "Estudos e Desenvolvimento"}
               {aba === "carreira" && "Trilha de Carreira"}
@@ -3077,7 +3057,6 @@ function Dashboard({ onLogout }) {
         </div>
         <main style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 24px 80px" }}>
           {aba === "resultados" && <TabResultados abrilAtual={abrilAtual} diarioAtual={diarioAtual} humorKey={perfilKey} />}
-          {aba === "calendario" && <><CardClosers /><TabReunioes /></>}
           {aba === "dados" && <TabDados abrilAtual={abrilAtual} dadosPlanilha={dadosPlanilha} onDadosImportados={handleDadosImportados} preview={dadosPlanilha} syncInfo={syncInfo} salvando={salvando} salvoOk={salvoOk} onSalvarSupabase={handleSalvarSupabase} />}
           {aba === "lideranca" && <TabLideranca />}
           {aba === "carreira" && <TabCarreira />}
