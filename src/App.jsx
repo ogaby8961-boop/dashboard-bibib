@@ -2410,7 +2410,6 @@ function TabReunioes(){
 
 const TABS=[
   {id:"resultados",label:"Metas",icon:Target},
-  {id:"calendario",label:"Calendário",icon:Calendar},
   {id:"dados",label:"Dados",icon:BarChart2},
   {id:"lideranca",label:"Estudos",icon:Star},
   {id:"carreira",label:"Trilha de Carreira",icon:Rocket},
@@ -2820,6 +2819,7 @@ function Sidebar({ aberta, aba, setAba, onLogout, onFechar }) {
 // ─── DASHBOARD ─────────────────────────────────────────────────
 function Dashboard({ onLogout }) {
   const [aba, setAba] = useState("resultados");
+  const [calendarioAberto, setCalendarioAberto] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
@@ -2895,6 +2895,27 @@ function Dashboard({ onLogout }) {
       {perfilAberto && <ModalPerfil onFechar={() => { setPerfilAberto(false); setPerfilKey(k => k+1); }} />}
 
       {/* CHAT ASSISTENTE */}
+      {/* MODAL CALENDÁRIO */}
+      {calendarioAberto && (
+        <div onClick={()=>setCalendarioAberto(false)} style={{position:"fixed",inset:0,backgroundColor:"rgba(0,0,0,0.6)",zIndex:500,backdropFilter:"blur(6px)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:70}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"min(1100px,95vw)",maxHeight:"85vh",backgroundColor:"#0b0b16",border:`1px solid ${BORDER}`,borderRadius:20,display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 32px 80px rgba(0,0,0,0.8)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",borderBottom:`1px solid ${BORDER}`,flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <Calendar size={16} style={{color:ACCENT}}/>
+                <span style={{fontSize:15,fontWeight:800,color:"#fff"}}>Calendário</span>
+              </div>
+              <button onClick={()=>setCalendarioAberto(false)} style={{background:"none",border:"none",cursor:"pointer",color:"#475569",display:"flex",alignItems:"center",padding:4}}>
+                <X size={18}/>
+              </button>
+            </div>
+            <div style={{overflowY:"auto",padding:20,display:"flex",flexDirection:"column",gap:16}}>
+              <CardClosers/>
+              <TabReunioes/>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SIDEBAR */}
       <Sidebar
         aberta={sidebarAberta}
@@ -2994,6 +3015,24 @@ function Dashboard({ onLogout }) {
             })}
           </nav>
 
+          {/* Ícone Calendário */}
+          <button
+            onClick={() => setCalendarioAberto(v => !v)}
+            title="Abrir calendário"
+            style={{
+              width: 32, height: 32, borderRadius: "50%",
+              backgroundColor: calendarioAberto ? "rgba(168,85,247,0.2)" : "transparent",
+              border: `1px solid ${calendarioAberto ? ACCENT : BORDER}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", flexShrink: 0, marginLeft: 8,
+              transition: "all 0.2s", color: calendarioAberto ? ACCENT : "#64748b",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.color = ACCENT; }}
+            onMouseLeave={e => { if (!calendarioAberto) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = "#64748b"; } }}
+          >
+            <Calendar size={15}/>
+          </button>
+
           {/* Avatar clicável */}
           {(() => {
             const p = storageGet(STORAGE_PERFIL) ?? PERFIL_DEFAULT;
@@ -3027,7 +3066,6 @@ function Dashboard({ onLogout }) {
             <h1 style={{ fontSize: 26, fontWeight: 900, color: "#fff", letterSpacing: "-0.5px", margin: 0 }}>
               {aba === "resultados" && "Metas do Mês"}
               {aba === "dados" && "Dados e Planilha"}
-              {aba === "calendario" && "Calendário"}
               {aba === "lideranca" && "Estudos e Desenvolvimento"}
               {aba === "carreira" && "Trilha de Carreira"}
             </h1>
@@ -3040,7 +3078,6 @@ function Dashboard({ onLogout }) {
         <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 28px 80px" }}>
           {aba === "resultados" && <TabResultados abrilAtual={abrilAtual} diarioAtual={diarioAtual} humorKey={perfilKey} />}
           {aba === "dados" && <TabDados abrilAtual={abrilAtual} dadosPlanilha={dadosPlanilha} onDadosImportados={handleDadosImportados} preview={dadosPlanilha} syncInfo={syncInfo} salvando={salvando} salvoOk={salvoOk} onSalvarSupabase={handleSalvarSupabase} />}
-          {aba === "calendario" && <><CardClosers /><TabReunioes /></>}
           {aba === "lideranca" && <TabLideranca />}
           {aba === "carreira" && <TabCarreira />}
           <p style={{ textAlign: "center", fontSize: 11, color: "#1e1b2e", marginTop: 48 }}>[Resultados] [bibi] · 2026</p>
