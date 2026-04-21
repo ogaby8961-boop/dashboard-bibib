@@ -1959,163 +1959,120 @@ function isCompromissoPessoal(titulo=""){
 function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHora, carregando}){
   const hoje=new Date();
   const inicioSem=getInicioSemanaData(new Date(diaFoco));
-  const dias=Array.from({length:7},(_,i)=>{
-    const d=new Date(inicioSem);
-    d.setDate(inicioSem.getDate()+i);
-    return d;
-  });
-
-  // Agrupa reuniões por dia
+  const dias=Array.from({length:7},(_,i)=>{const d=new Date(inicioSem);d.setDate(inicioSem.getDate()+i);return d;});
   const porDia={};
   reunioesSemana.forEach(r=>{porDia[r.data]=porDia[r.data]||[];porDia[r.data].push(r);});
-
-  // Converte hora "HH:MM" em minutos desde 8h
-  const toMin=(h)=>{if(!h)return 0;const[hh,mm]=(h||"00:00").split(":");return(parseInt(hh)-8)*60+parseInt(mm||0);};
-  const HORA_H=56; // pixels por hora
-
   const isHoje=(d)=>d.toDateString()===hoje.toDateString();
+  const HORA_H=52;
+  const bgMap={agendada:"rgba(96,165,250,0.25)",realizada:"rgba(74,222,128,0.25)",noshow:"rgba(248,113,113,0.25)",pessoal:"rgba(245,158,11,0.22)",cancelada:"rgba(148,163,184,0.15)"};
+  const solidMap={agendada:"#3b82f6",realizada:"#22c55e",noshow:"#ef4444",pessoal:"#f59e0b",cancelada:"#64748b"};
+  const getStatus=(r)=>isCompromissoPessoal(r.titulo)?"pessoal":r.status;
+  const hToMin=(h)=>{if(!h)return 8*60;const[hh,mm]=(h+"").split(":");return parseInt(hh||8)*60+parseInt(mm||0);};
+
+  function calcLayout(reunioes){
+    const evs=reunioes.map(r=>{
+      const s=hToMin(r.hora_inicio);
+      const e=r.hora_fim?hToMin(r.hora_fim):s+45;
+      const dur=Math.max(e-s,10);
+      return{...r,s,e,dur,top:(s-8*60)*(HORA_H/60),altura:Math.max(dur*(HORA_H/60),22),col:0,cols:1};
+    }).sort((a,b)=>a.s-b.s);
+
+    // atribui colunas
+    const colFim=[];
+    evs.forEach(ev=>{
+      let c=0;
+      while(colFim[c]!==undefined&&colFim[c]>ev.s)c++;
+      ev.col=c;colFim[c]=ev.e;
+    });
+    // calcula total de colunas por grupo de sobreposição
+    evs.forEach(ev=>{
+      const grupo=evs.filter(x=>x.s<ev.e&&x.e>ev.s);
+      ev.cols=grupo.reduce((m,x)=>Math.max(m,x.col+1),1);
+    });
+    return evs;
+  }
 
   return(
-    <div style={{borderRadius:16,overflow:"hidden",border:`1px solid ${BORDER}`,backgroundColor:CARD_BG}}>
-      {/* Header dias */}
-      <div style={{display:"grid",gridTemplateColumns:"52px repeat(7,1fr)",borderBottom:`1px solid ${BORDER}`}}>
-        <div style={{padding:"10px 0",backgroundColor:"#0a0a14"}}/>
+    <div style={{borderRadius:16,border:`1px solid ${BORDER}`,backgroundColor:CARD_BG,overflow:"hidden"}}>
+      {/* Header */}
+      <div style={{display:"grid",gridTemplateColumns:"48px repeat(7,1fr)",borderBottom:`1px solid ${BORDER}`,backgroundColor:"#0a0a14"}}>
+        <div/>
         {dias.map((d,i)=>{
           const iso=d.toISOString().split("T")[0];
           const ativo=iso===diaFoco;
           const eh=isHoje(d);
+          const n=(porDia[iso]||[]).length;
           return(
-            <div key={i} style={{padding:"10px 4px",textAlign:"center",borderLeft:`1px solid ${BORDER}`,backgroundColor:ativo?"rgba(168,85,247,0.06)":"#0a0a14"}}>
-              <p style={{fontSize:10,fontWeight:700,color:eh?ACCENT:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>{DIAS_SEMANA_LABEL[i]}</p>
-              <div style={{width:30,height:30,borderRadius:"50%",margin:"4px auto 0",display:"flex",alignItems:"center",justifyContent:"center",
-                backgroundColor:eh?"#a855f7":"transparent"}}>
-                <p style={{fontSize:16,fontWeight:800,color:eh?"#fff":ativo?"#e2e8f0":"#64748b"}}>{d.getDate()}</p>
+            <div key={i} style={{padding:"8px 2px",textAlign:"center",borderLeft:`1px solid ${BORDER}`,backgroundColor:ativo?"rgba(168,85,247,0.08)":"transparent",cursor:"pointer"}} onClick={()=>onClicarHora(iso,"09:00")}>
+              <p style={{fontSize:9,fontWeight:700,color:eh?ACCENT:"#475569",textTransform:"uppercase",letterSpacing:"0.06em",margin:0}}>{DIAS_SEMANA_LABEL[i]}</p>
+              <div style={{width:26,height:26,borderRadius:"50%",margin:"3px auto",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:eh?ACCENT:"transparent"}}>
+                <span style={{fontSize:13,fontWeight:800,color:eh?"#fff":ativo?"#e2e8f0":"#64748b"}}>{d.getDate()}</span>
               </div>
+              {n>0&&<span style={{fontSize:8,color:ACCENT,fontWeight:700}}>{n} reun.</span>}
             </div>
           );
         })}
       </div>
 
-      {/* Grade de horários */}
-      <div style={{display:"grid",gridTemplateColumns:"52px repeat(7,1fr)",maxHeight:380,overflowY:"auto",position:"relative"}}>
-        {/* Coluna de horas */}
-        <div>
+      {/* Grade */}
+      <div style={{display:"grid",gridTemplateColumns:"48px repeat(7,1fr)",maxHeight:420,overflowY:"auto",position:"relative"}}>
+        {/* Horas */}
+        <div style={{backgroundColor:"#0a0a14"}}>
           {HORAS_CAL.map(h=>(
-            <div key={h} style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:8,paddingTop:4}}>
-              <span style={{fontSize:10,color:"#334155",fontWeight:600}}>{String(h).padStart(2,"0")}h</span>
+            <div key={h} style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:6,paddingTop:3}}>
+              <span style={{fontSize:9,color:"#334155",fontWeight:600}}>{String(h).padStart(2,"0")}h</span>
             </div>
           ))}
         </div>
 
-        {/* Colunas dos dias */}
+        {/* Dias */}
         {dias.map((d,di)=>{
           const iso=d.toISOString().split("T")[0];
-          const reunioesDia=(porDia[iso]||[]).sort((a,b)=>a.hora_inicio.localeCompare(b.hora_inicio));
           const ativo=iso===diaFoco;
+          const raw=(porDia[iso]||[]);
+          const evs=calcLayout(raw);
           return(
             <div key={di} style={{borderLeft:`1px solid ${BORDER}`,position:"relative",backgroundColor:ativo?"rgba(168,85,247,0.02)":"transparent"}}>
-              {/* Linhas de hora clicáveis */}
               {HORAS_CAL.map(h=>(
                 <div key={h} onClick={()=>onClicarHora(iso,`${String(h).padStart(2,"0")}:00`)}
-                  style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,cursor:"pointer",transition:"background 0.1s"}}
-                  onMouseEnter={e=>e.currentTarget.style.backgroundColor="rgba(168,85,247,0.05)"}
-                  onMouseLeave={e=>e.currentTarget.style.backgroundColor="transparent"}
-                />
+                  style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,cursor:"pointer"}}
+                  onMouseEnter={e=>e.currentTarget.style.backgroundColor="rgba(168,85,247,0.04)"}
+                  onMouseLeave={e=>e.currentTarget.style.backgroundColor="transparent"}/>
               ))}
-
-              {/* Blocos de reunião — lado a lado estilo Google Calendar */}
-              {(()=>{
-                const bgMap={agendada:"rgba(96,165,250,0.25)",realizada:"rgba(74,222,128,0.25)",noshow:"rgba(248,113,113,0.25)",pessoal:"rgba(245,158,11,0.22)",cancelada:"rgba(148,163,184,0.15)"};
-                const solidMap={agendada:"#3b82f6",realizada:"#22c55e",noshow:"#ef4444",pessoal:"#f59e0b",cancelada:"#64748b"};
-                const getStatus=(r)=>isCompromissoPessoal(r.titulo)?"pessoal":r.status;
-
-                // Converte "HH:MM" em minutos absolutos (sem subtrair 8h)
-                const hToMin=(h)=>{
-                  if(!h)return 0;
-                  const[hh,mm]=(h+"").split(":");
-                  return parseInt(hh||0)*60+parseInt(mm||0);
-                };
-
-                // 1. Enriquece cada reunião com posição em px
-                const evs=reunioesDia.map(r=>{
-                  const startMin=hToMin(r.hora_inicio);
-                  const endMin=r.hora_fim?hToMin(r.hora_fim):startMin+45;
-                  const durMin=Math.max(endMin-startMin,15);
-                  const top=(startMin-8*60)*(HORA_H/60);
-                  const altura=Math.max(durMin*(HORA_H/60),26);
-                  return{...r,_start:startMin,_end:startMin+durMin,top,bot:top+altura,altura,col:0,totalCols:1};
-                });
-
-                // 2. Ordena por hora de início
-                evs.sort((a,b)=>a._start-b._start);
-
-                // 3. Atribui colunas — cada evento vai para a primeira coluna onde não há sobreposição
-                const colEnd=[];
-                evs.forEach(ev=>{
-                  let c=0;
-                  while(colEnd[c]!==undefined && colEnd[c]>ev._start) c++;
-                  ev.col=c;
-                  colEnd[c]=ev._end;
-                });
-
-                // 4. Calcula totalCols para cada evento (máximo de colunas no seu intervalo)
-                evs.forEach(ev=>{
-                  const sobrepostos=evs.filter(x=>x._start<ev._end&&x._end>ev._start);
-                  ev.totalCols=sobrepostos.reduce((m,x)=>Math.max(m,x.col+1),1);
-                });
-
-                // 5. Renderiza
-                return evs.map(ev=>{
-                  const st=getStatus(ev);
-                  const wPct=100/ev.totalCols;
-                  const leftPct=ev.col*wPct;
-                  return(
-                    <div key={ev.id} onClick={()=>onClicarReuniao(ev)}
-                      style={{
-                        position:"absolute",
-                        left:`calc(${leftPct}% + 2px)`,
-                        width:`calc(${wPct}% - 4px)`,
-                        top:ev.top,
-                        height:ev.altura,
-                        backgroundColor:bgMap[st]||bgMap.agendada,
-                        borderLeft:`3px solid ${solidMap[st]||solidMap.agendada}`,
-                        borderRadius:"0 5px 5px 0",
-                        padding:"2px 4px",
-                        cursor:"pointer",
-                        overflow:"hidden",
-                        transition:"filter 0.15s",
-                        zIndex:10+ev.col,
-                        boxSizing:"border-box",
-                      }}
-                      onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.25)"}
-                      onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
-                      <p style={{
-                        fontSize:9,fontWeight:700,
-                        color:solidMap[st]||solidMap.agendada,
-                        lineHeight:1.3,
-                        whiteSpace:"nowrap",
-                        overflow:"hidden",
-                        textOverflow:"ellipsis",
-                        margin:0,
-                      }}>
-                        {ev.hora_inicio} {ev.titulo}
-                      </p>
-                      {ev.altura>38&&ev.hora_fim&&(
-                        <p style={{fontSize:8,color:"rgba(255,255,255,0.35)",margin:"1px 0 0"}}>
-                          até {ev.hora_fim}
-                        </p>
-                      )}
-                    </div>
-                  );
-                });
-              })()}
+              {evs.map(ev=>{
+                const st=getStatus(ev);
+                const wPct=100/ev.cols;
+                const leftPct=ev.col*wPct;
+                return(
+                  <div key={ev.id} onClick={e=>{e.stopPropagation();onClicarReuniao(ev);}}
+                    style={{
+                      position:"absolute",
+                      top:ev.top,height:ev.altura,
+                      left:`calc(${leftPct}% + 1px)`,
+                      width:`calc(${wPct}% - 2px)`,
+                      backgroundColor:bgMap[st]||bgMap.agendada,
+                      borderLeft:`2px solid ${solidMap[st]||solidMap.agendada}`,
+                      borderRadius:"0 4px 4px 0",
+                      padding:"1px 3px",cursor:"pointer",
+                      overflow:"hidden",boxSizing:"border-box",
+                      zIndex:10+ev.col,
+                      transition:"filter 0.12s",
+                    }}
+                    onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.3)"}
+                    onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+                    <p style={{fontSize:8,fontWeight:700,color:solidMap[st]||solidMap.agendada,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",margin:0,lineHeight:1.3}}>
+                      {ev.hora_inicio} {ev.titulo}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
       {carregando&&(
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"rgba(7,7,15,0.5)",borderRadius:16}}>
-          <Loader2 size={24} style={{color:ACCENT,animation:"spin 0.7s linear infinite"}}/>
+          <Loader2 size={22} style={{color:ACCENT,animation:"spin 0.7s linear infinite"}}/>
         </div>
       )}
     </div>
