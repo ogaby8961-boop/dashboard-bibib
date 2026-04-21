@@ -491,7 +491,7 @@ function StatusMeta({clientesTotal, dadosAbril, onAddGanho, onRemoveGanho, onSal
         <div className="flex items-center gap-2"><Target size={15} style={{color:ACCENT}}/><p className="text-xs font-bold uppercase tracking-widest" style={{color:"#64748b"}}>Meta do Mês — Abril · Status</p></div>
         <span className="text-xs font-bold px-3 py-1 rounded-full" style={{backgroundColor:emRitmo?"#2e1065":"#3f1515",color:emRitmo?ACCENT:"#f87171",border:`1px solid ${emRitmo?ACCENT:"#f87171"}`}}>{emRitmo?"No Ritmo":"Atrasado"}</span>
       </div>
-      {saudacao && <span className="text-xs font-medium" style={{color: saudacao.cor}}>{saudacao.texto}</span>}
+
       <div className="flex items-baseline gap-3">
         <span className="text-6xl font-extrabold text-white">{clientesTotal}</span>
         <span className="text-2xl font-light" style={{color:"#475569"}}>/ {metas.m3}</span>
@@ -2522,124 +2522,6 @@ function CardClosers() {
   );
 }
 
-// ─── CHAT ASSISTENTE ──────────────────────────────────────────
-const ASSISTENTE_AVATAR = "data:image/jpeg;base64,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";
-
-function ChatAssistente({ onFechar, dadosBibly }) {
-  const [msgs, setMsgs] = useState([
-    { role: "assistant", text: "Oi Gabrielly! 👋 Sou sua assistente do Bibly. Pode me perguntar sobre suas reuniões, metas, resultados ou qualquer dado do seu dashboard!" }
-  ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const endRef = React.useRef(null);
-
-  React.useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
-
-  const enviar = async () => {
-    if (!input.trim() || loading) return;
-    const pergunta = input.trim();
-    setInput("");
-    setMsgs(m => [...m, { role: "user", text: pergunta }]);
-    setLoading(true);
-
-    try {
-      const contexto = JSON.stringify(dadosBibly, null, 2);
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `Você é a assistente pessoal da Gabrielly, uma SDR da Cardápio Web. Você tem acesso aos dados reais do dashboard dela (Bibly) e responde perguntas sobre reuniões, metas, métricas e desempenho. Seja direta, amigável e use emojis com moderação. Responda sempre em português brasileiro. Aqui estão os dados atuais do Bibly:\n\n${contexto}`,
-          messages: [{ role: "user", content: pergunta }],
-        }),
-      });
-      const data = await res.json();
-      const resposta = data.content?.[0]?.text || "Desculpa, não consegui processar sua pergunta.";
-      setMsgs(m => [...m, { role: "assistant", text: resposta }]);
-    } catch {
-      setMsgs(m => [...m, { role: "assistant", text: "Ops, tive um probleminha técnico. Tenta de novo! 😅" }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <>
-      {/* Overlay */}
-      <div onClick={onFechar} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 500, backdropFilter: "blur(4px)" }} />
-
-      {/* Chat */}
-      <div style={{
-        position: "fixed", bottom: 24, right: 24, zIndex: 501,
-        width: 380, height: 560,
-        backgroundColor: "#0c0c18", border: `1px solid rgba(168,85,247,0.3)`,
-        borderRadius: 20, display: "flex", flexDirection: "column",
-        boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
-        overflow: "hidden",
-      }}>
-        {/* Header */}
-        <div style={{ padding: "14px 16px", borderBottom: `1px solid ${BORDER}`, display: "flex", alignItems: "center", gap: 12, backgroundColor: "#0a0a14", flexShrink: 0 }}>
-          {/* Avatar SVG */}
-          <img src={ASSISTENTE_AVATAR} alt="Bibi" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(168,85,247,0.4)", flexShrink: 0 }} />
-          <div>
-            <p style={{ fontSize: 14, fontWeight: 800, color: "#fff", margin: 0 }}>Bibly AI</p>
-            <p style={{ fontSize: 10, color: "#4ade80", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#4ade80", display: "inline-block" }}/> Online
-            </p>
-          </div>
-          <button onClick={onFechar} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#475569" }}>
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Mensagens */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
-          {msgs.map((m, i) => (
-            <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-end", flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
-              {m.role === "assistant" && (
-                <img src={ASSISTENTE_AVATAR} alt="Bibi" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "1px solid rgba(168,85,247,0.3)" }} />
-              )}
-              <div style={{
-                maxWidth: "75%", padding: "10px 13px", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                backgroundColor: m.role === "user" ? "rgba(168,85,247,0.2)" : "#1a1a2e",
-                border: `1px solid ${m.role === "user" ? "rgba(168,85,247,0.3)" : BORDER}`,
-                fontSize: 13, color: "#e2e8f0", lineHeight: 1.5, whiteSpace: "pre-wrap",
-              }}>{m.text}</div>
-            </div>
-          ))}
-          {loading && (
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#2e1065", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🤖</div>
-              <div style={{ padding: "10px 14px", borderRadius: "16px 16px 16px 4px", backgroundColor: "#1a1a2e", border: `1px solid ${BORDER}`, display: "flex", gap: 4, alignItems: "center" }}>
-                {[0,1,2].map(i=><span key={i} style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: ACCENT, display: "inline-block", animation: `bounce 1s ${i*0.2}s infinite` }}/>)}
-              </div>
-            </div>
-          )}
-          <div ref={endRef}/>
-        </div>
-
-        {/* Input */}
-        <div style={{ padding: "12px 14px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 8, backgroundColor: "#0a0a14", flexShrink: 0 }}>
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviar()}
-            placeholder="Pergunte algo sobre seu dia..."
-            style={{ flex: 1, backgroundColor: "#111118", border: `1px solid ${BORDER}`, borderRadius: 12, color: "#fff", fontSize: 13, padding: "10px 14px", outline: "none" }}
-          />
-          <button onClick={enviar} disabled={loading || !input.trim()}
-            style={{ width: 40, height: 40, borderRadius: 12, border: "none", cursor: input.trim() ? "pointer" : "not-allowed", backgroundColor: input.trim() ? ACCENT : "#1e1b2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <style>{`@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}`}</style>
-    </>
-  );
-}
-
 // ─── SIDEBAR ──────────────────────────────────────────────────
 function Sidebar({ aberta, aba, setAba, onLogout, onFechar }) {
   const W = 272;
@@ -2850,7 +2732,6 @@ function Dashboard({ onLogout }) {
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [perfilKey, setPerfilKey] = useState(0);
-  const [chatAberto, setChatAberto] = useState(false);
   const [dadosPlanilha, setDadosPlanilha] = useState(() => {
     const s = storageGet(STORAGE_PLANILHA_SALVA);
     if (s?.dados) return s.dados;
@@ -2922,39 +2803,6 @@ function Dashboard({ onLogout }) {
       {perfilAberto && <ModalPerfil onFechar={() => { setPerfilAberto(false); setPerfilKey(k => k+1); }} />}
 
       {/* CHAT ASSISTENTE */}
-      {chatAberto && (
-        <ChatAssistente
-          onFechar={() => setChatAberto(false)}
-          dadosBibly={{
-            hoje: hojeISO(),
-            planilha: dadosPlanilha?.atual ?? abrilFallback,
-            metas: dadosPlanilha?.metas ?? abrilFallback.metas,
-            closers: CLOSERS,
-          }}
-        />
-      )}
-
-      {/* BOTÃO FLUTUANTE DO CHAT */}
-      {!chatAberto && (
-        <button
-          onClick={() => setChatAberto(true)}
-          title="Abrir assistente"
-          style={{
-            position: "fixed", bottom: 24, right: 24, zIndex: 200,
-            width: 56, height: 56, borderRadius: "50%",
-            background: "linear-gradient(135deg,#6d28d9,#a855f7)",
-            border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 8px 24px rgba(168,85,247,0.5)",
-            transition: "transform 0.2s, box-shadow 0.2s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(168,85,247,0.7)"; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(168,85,247,0.5)"; }}
-        >
-          <img src={ASSISTENTE_AVATAR} alt="Bibi" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
-        </button>
-      )}
-
       {/* SIDEBAR */}
       <Sidebar
         aberta={sidebarAberta}
