@@ -1977,7 +1977,7 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
       </div>
 
       {/* Grade de horários */}
-      <div style={{display:"grid",gridTemplateColumns:"52px repeat(7,1fr)",maxHeight:520,overflowY:"auto",position:"relative"}}>
+      <div style={{display:"grid",gridTemplateColumns:"52px repeat(7,1fr)",maxHeight:380,overflowY:"auto",position:"relative"}}>
         {/* Coluna de horas */}
         <div>
           {HORAS_CAL.map(h=>(
@@ -2846,9 +2846,9 @@ function Dashboard({ onLogout }) {
         backgroundColor: scrolled ? "rgba(7,7,15,0.97)" : "rgba(7,7,15,0.7)",
         backdropFilter: "blur(20px)",
         borderBottom: `1px solid ${scrolled ? BORDER : "transparent"}`,
-        transition: "all 0.3s",
+        transition: "background-color 0.3s, border-color 0.3s",
       }}>
-        <div style={{ maxWidth: "100%", margin: "0 auto", padding: "0 32px", height: 60, display: "flex", alignItems: "center", gap: 0 }}>
+        <div style={{ padding: "0 32px", height: 60, display: "flex", alignItems: "center", gap: 0 }}>
 
           {/* Botão Menu */}
           <button
@@ -2955,7 +2955,7 @@ function Dashboard({ onLogout }) {
 
       {/* CONTEÚDO */}
       <div style={{ paddingTop: 60 }}>
-        <div style={{ maxWidth: 1600, margin: "0 auto", padding: "28px 28px 0" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 28px 0" }}>
           <p style={{ fontSize: 11, color: "#6d28d9", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 4 }}>
             {TABS.find(t => t.id === aba)?.label} · Bibly
           </p>
@@ -2973,7 +2973,7 @@ function Dashboard({ onLogout }) {
           </div>
           <div style={{ height: 1, backgroundColor: BORDER, marginTop: 20 }} />
         </div>
-        <main style={{ maxWidth: 1600, margin: "0 auto", padding: "24px 28px 80px" }}>
+        <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 28px 80px" }}>
           {aba === "resultados" && <TabResultados abrilAtual={abrilAtual} diarioAtual={diarioAtual} humorKey={perfilKey} />}
           {aba === "dados" && <TabDados abrilAtual={abrilAtual} dadosPlanilha={dadosPlanilha} onDadosImportados={handleDadosImportados} preview={dadosPlanilha} syncInfo={syncInfo} salvando={salvando} salvoOk={salvoOk} onSalvarSupabase={handleSalvarSupabase} />}
           {aba === "calendario" && <><CardClosers /><TabReunioes /></>}
