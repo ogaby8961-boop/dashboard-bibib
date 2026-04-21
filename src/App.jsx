@@ -830,21 +830,24 @@ function TabResultados({abrilAtual,diarioAtual,humorKey}){
   return(
     <div className="space-y-6">
       {/* Aviso de reuniões de hoje */}
-      {reunioesHoje !== null && (
-        <div style={{
-          display:"flex", alignItems:"center", gap:12, padding:"12px 18px",
-          borderRadius:14, border:`1px solid ${reunioesHoje.length > 0 ? "rgba(168,85,247,0.35)" : "rgba(100,116,139,0.2)"}`,
-          backgroundColor: reunioesHoje.length > 0 ? "rgba(168,85,247,0.08)" : "rgba(15,15,24,0.6)",
-        }}>
-          <Calendar size={15} style={{color: reunioesHoje.length > 0 ? ACCENT : "#475569", flexShrink:0}}/>
-          <p style={{fontSize:13, fontWeight:600, color: reunioesHoje.length > 0 ? "#e2e8f0" : "#475569", margin:0}}>
-            {reunioesHoje.length > 0
-              ? <>Hoje você tem <span style={{color:ACCENT, fontWeight:800}}>{reunioesHoje.length} reunião{reunioesHoje.length > 1 ? "s" : ""}</span> agendada{reunioesHoje.length > 1 ? "s" : ""} — <span style={{color:"#94a3b8", fontWeight:400}}>{reunioesHoje.filter(r=>r.status==="realizada").length} realizada{reunioesHoje.filter(r=>r.status==="realizada").length !== 1 ? "s" : ""}, {reunioesHoje.filter(r=>r.status==="noshow").length} no-show{reunioesHoje.filter(r=>r.status==="noshow").length !== 1 ? "s" : ""}</span></>
-              : "Nenhuma reunião agendada para hoje."
-            }
-          </p>
-        </div>
-      )}
+      {reunioesHoje !== null && (()=>{
+        const rc=reunioesHoje.filter(r=>!isCompromissoPessoal(r.titulo));
+        return(
+          <div style={{
+            display:"flex", alignItems:"center", gap:12, padding:"12px 18px",
+            borderRadius:14, border:`1px solid ${rc.length > 0 ? "rgba(168,85,247,0.35)" : "rgba(100,116,139,0.2)"}`,
+            backgroundColor: rc.length > 0 ? "rgba(168,85,247,0.08)" : "rgba(15,15,24,0.6)",
+          }}>
+            <Calendar size={15} style={{color: rc.length > 0 ? ACCENT : "#475569", flexShrink:0}}/>
+            <p style={{fontSize:13, fontWeight:600, color: rc.length > 0 ? "#e2e8f0" : "#475569", margin:0}}>
+              {rc.length > 0
+                ? <>Hoje você tem <span style={{color:ACCENT,fontWeight:800}}>{rc.length} reunião{rc.length!==1?"s":""}</span> agendada{rc.length!==1?"s":""}.</>
+                : "Nenhuma reunião de cliente agendada para hoje."
+              }
+            </p>
+          </div>
+        );
+      })()}
       <div className="grid grid-cols-1 gap-4 items-start">
         <StatusMeta clientesTotal={clientesStatus} dadosAbril={abrilAtual} onAddGanho={handleAddGanho} onRemoveGanho={handleRemoveGanho} onSalvarGanho={handleSalvarGanhos} onSalvoGanho={salvo}/>
       </div>
@@ -1936,6 +1939,22 @@ function getInicioSemanaData(ref){
   return d;
 }
 
+// ─── DETECTA COMPROMISSO PESSOAL PELO TÍTULO ─────────────────
+function isCompromissoPessoal(titulo=""){
+  const t=(titulo||"").toLowerCase();
+  return (
+    t.startsWith("[sdr]") ||
+    t.startsWith("[águia]") ||
+    t.startsWith("[aguia]") ||
+    t.includes("almoço") ||
+    t.includes("almoco") ||
+    t.includes("pedir reembolso") ||
+    t.includes("aniversário") ||
+    t.includes("aniversario") ||
+    t.includes("roda de conversa")
+  );
+}
+
 function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHora, carregando}){
   const hoje=new Date();
   const inicioSem=getInicioSemanaData(new Date(diaFoco));
@@ -2003,53 +2022,84 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
                 />
               ))}
 
-              {/* Blocos de reunião — lado a lado quando coincidem */}
+              {/* Blocos de reunião — lado a lado estilo Google Calendar */}
               {(()=>{
-                const bgMap={agendada:"rgba(96,165,250,0.18)",realizada:"rgba(74,222,128,0.18)",noshow:"rgba(248,113,113,0.18)",pessoal:"rgba(245,158,11,0.18)",cancelada:"rgba(148,163,184,0.12)"};
-                const borderMap={agendada:"#60a5fa",realizada:"#4ade80",noshow:"#f87171",pessoal:"#f59e0b",cancelada:"#94a3b8"};
+                const bgMap={agendada:"rgba(96,165,250,0.25)",realizada:"rgba(74,222,128,0.25)",noshow:"rgba(248,113,113,0.25)",pessoal:"rgba(245,158,11,0.22)",cancelada:"rgba(148,163,184,0.15)"};
+                const solidMap={agendada:"#3b82f6",realizada:"#22c55e",noshow:"#ef4444",pessoal:"#f59e0b",cancelada:"#64748b"};
+                const getStatus=(r)=>isCompromissoPessoal(r.titulo)?"pessoal":r.status;
 
-                // Detectar grupos de reuniões que se sobrepõem
-                const grupos=[];
-                reunioesDia.forEach(r=>{
-                  const rTop=toMin(r.hora_inicio);
-                  const rBot=rTop+(r.hora_fim?toMin(r.hora_fim)-toMin(r.hora_inicio):45);
-                  let colocado=false;
-                  for(const g of grupos){
-                    const overlap=g.some(x=>{
-                      const xTop=toMin(x.hora_inicio);
-                      const xBot=xTop+(x.hora_fim?toMin(x.hora_fim)-toMin(x.hora_inicio):45);
-                      return rTop<xBot&&rBot>xTop;
-                    });
-                    if(overlap){g.push(r);colocado=true;break;}
-                  }
-                  if(!colocado)grupos.push([r]);
+                // 1. Calcula top/bottom de cada reunião
+                const comPos=reunioesDia.map(r=>{
+                  const top=toMin(r.hora_inicio)*(HORA_H/60);
+                  const durMin=r.hora_fim?(toMin(r.hora_fim)-toMin(r.hora_inicio)):45;
+                  const altura=Math.max(durMin*(HORA_H/60),26);
+                  return{...r,top,bot:top+altura,altura};
                 });
 
-                return grupos.flatMap(g=>
-                  g.map((r,idx)=>{
-                    const top=toMin(r.hora_inicio)*(HORA_H/60);
-                    const durMin=r.hora_fim?toMin(r.hora_fim)-toMin(r.hora_inicio):45;
-                    const altura=Math.max(durMin*(HORA_H/60),28);
-                    const total=g.length;
-                    const w=`calc((100% - 6px) / ${total})`;
-                    const left=`calc(3px + ${idx} * (100% - 6px) / ${total})`;
-                    return(
-                      <div key={r.id} onClick={()=>onClicarReuniao(r)}
-                        style={{position:"absolute",left,width:w,top,height:altura,
-                          backgroundColor:bgMap[r.status]||bgMap.agendada,
-                          borderLeft:`3px solid ${borderMap[r.status]||borderMap.agendada}`,
-                          borderRadius:"0 6px 6px 0",padding:"3px 5px",cursor:"pointer",
-                          overflow:"hidden",transition:"filter 0.15s",zIndex:10,boxSizing:"border-box"}}
-                        onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.3)"}
-                        onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
-                        <p style={{fontSize:9,fontWeight:700,color:borderMap[r.status]||borderMap.agendada,lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                          {r.hora_inicio} {r.titulo}
+                // 2. Detecta colunas por sobreposição (estilo Google)
+                const colunas=[]; // array de arrays de eventos
+                comPos.forEach(r=>{
+                  let colocado=false;
+                  for(const col of colunas){
+                    const ultimo=col[col.length-1];
+                    if(r.top>=ultimo.bot){col.push(r);colocado=true;break;}
+                  }
+                  if(!colocado)colunas.push([r]);
+                });
+                const totalCols=colunas.length;
+
+                // 3. Atribui colIdx a cada evento
+                const colIdx={};
+                colunas.forEach((col,ci)=>col.forEach(r=>colIdx[r.id]=ci));
+
+                // 4. Renderiza
+                return comPos.map(r=>{
+                  const st=getStatus(r);
+                  const ci=colIdx[r.id]??0;
+                  // Calcula quantas colunas se sobrepõem neste evento
+                  const colsAtivas=colunas.filter(col=>col.some(x=>x.top<r.bot&&x.bot>r.top)).length||1;
+                  const wPct=100/colsAtivas;
+                  const leftPct=ci*wPct;
+                  return(
+                    <div key={r.id} onClick={()=>onClicarReuniao(r)}
+                      style={{
+                        position:"absolute",
+                        left:`calc(${leftPct}% + 2px)`,
+                        width:`calc(${wPct}% - 4px)`,
+                        top:r.top,
+                        height:r.altura,
+                        backgroundColor:bgMap[st]||bgMap.agendada,
+                        borderLeft:`3px solid ${solidMap[st]||solidMap.agendada}`,
+                        borderRadius:"0 5px 5px 0",
+                        padding:"2px 4px",
+                        cursor:"pointer",
+                        overflow:"hidden",
+                        transition:"filter 0.15s",
+                        zIndex:10,
+                        boxSizing:"border-box",
+                        minWidth:0,
+                      }}
+                      onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.25)"}
+                      onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+                      <p style={{
+                        fontSize:9,fontWeight:700,
+                        color:solidMap[st]||solidMap.agendada,
+                        lineHeight:1.3,
+                        whiteSpace:"nowrap",
+                        overflow:"hidden",
+                        textOverflow:"ellipsis",
+                        margin:0,
+                      }}>
+                        {r.hora_inicio} {r.titulo}
+                      </p>
+                      {r.altura>38&&r.hora_fim&&(
+                        <p style={{fontSize:8,color:"rgba(255,255,255,0.35)",margin:"1px 0 0"}}>
+                          até {r.hora_fim}
                         </p>
-                        {altura>36&&r.hora_fim&&<p style={{fontSize:8,color:"rgba(255,255,255,0.4)",marginTop:1}}>{r.hora_fim}</p>}
-                      </div>
-                    );
-                  })
-                );
+                      )}
+                    </div>
+                  );
+                });
               })()}
             </div>
           );
@@ -2225,13 +2275,15 @@ function TabReunioes(){
 
   // métricas do dia focado
   const reunioesDia=semana.filter(r=>r.data===diaFoco);
-  const total=reunioesDia.length;
-  const realizadas=reunioesDia.filter(r=>r.status==="realizada").length;
-  const noshows=reunioesDia.filter(r=>r.status==="noshow").length;
-  const agendadas=reunioesDia.filter(r=>r.status==="agendada").length;
+  const reunioesDiaCliente=reunioesDia.filter(r=>!isCompromissoPessoal(r.titulo));
+  const total=reunioesDiaCliente.length;
+  const realizadas=reunioesDiaCliente.filter(r=>r.status==="realizada").length;
+  const noshows=reunioesDiaCliente.filter(r=>r.status==="noshow").length;
+  const agendadas=reunioesDiaCliente.filter(r=>r.status==="agendada").length;
   const taxaDia=total>0?Math.round((noshows/total)*100):0;
-  const totalSem=semana.length;
-  const noshowsSem=semana.filter(r=>r.status==="noshow").length;
+  const semanaCliente=semana.filter(r=>!isCompromissoPessoal(r.titulo));
+  const totalSem=semanaCliente.length;
+  const noshowsSem=semanaCliente.filter(r=>r.status==="noshow").length;
   const taxaSem=totalSem>0?Math.round((noshowsSem/totalSem)*100):0;
 
   // Datas da semana
