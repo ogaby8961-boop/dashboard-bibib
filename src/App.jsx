@@ -2029,35 +2029,42 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
                 const solidMap={agendada:"#3b82f6",realizada:"#22c55e",noshow:"#ef4444",pessoal:"#f59e0b",cancelada:"#64748b"};
                 const getStatus=(r)=>isCompromissoPessoal(r.titulo)?"pessoal":r.status;
 
-                // 1. Enriquece cada reunião com top/bot/altura
+                // Converte "HH:MM" em minutos absolutos (sem subtrair 8h)
+                const hToMin=(h)=>{
+                  if(!h)return 0;
+                  const[hh,mm]=(h+"").split(":");
+                  return parseInt(hh||0)*60+parseInt(mm||0);
+                };
+
+                // 1. Enriquece cada reunião com posição em px
                 const evs=reunioesDia.map(r=>{
-                  const top=toMin(r.hora_inicio)*(HORA_H/60);
-                  const durMin=r.hora_fim?(toMin(r.hora_fim)-toMin(r.hora_inicio)):45;
+                  const startMin=hToMin(r.hora_inicio);
+                  const endMin=r.hora_fim?hToMin(r.hora_fim):startMin+45;
+                  const durMin=Math.max(endMin-startMin,15);
+                  const top=(startMin-8*60)*(HORA_H/60);
                   const altura=Math.max(durMin*(HORA_H/60),26);
-                  return{...r,top,bot:top+altura,altura,col:0,totalCols:1};
+                  return{...r,_start:startMin,_end:startMin+durMin,top,bot:top+altura,altura,col:0,totalCols:1};
                 });
 
-                // 2. Algoritmo de colunas: para cada evento, encontra a primeira coluna livre
-                const cols=[]; // cols[i] = bot do último evento nessa coluna
+                // 2. Ordena por hora de início
+                evs.sort((a,b)=>a._start-b._start);
+
+                // 3. Atribui colunas — cada evento vai para a primeira coluna onde não há sobreposição
+                const colEnd=[];
                 evs.forEach(ev=>{
-                  let placed=false;
-                  for(let i=0;i<cols.length;i++){
-                    if(ev.top>=cols[i]){
-                      ev.col=i;
-                      cols[i]=ev.bot;
-                      placed=true;
-                      break;
-                    }
-                  }
-                  if(!placed){ev.col=cols.length;cols.push(ev.bot);}
+                  let c=0;
+                  while(colEnd[c]!==undefined && colEnd[c]>ev._start) c++;
+                  ev.col=c;
+                  colEnd[c]=ev._end;
                 });
 
-                // 3. Para cada evento, descobre quantas colunas existem no seu intervalo
+                // 4. Calcula totalCols para cada evento (máximo de colunas no seu intervalo)
                 evs.forEach(ev=>{
-                  ev.totalCols=evs.filter(x=>x.top<ev.bot&&x.bot>ev.top).reduce((m,x)=>Math.max(m,x.col+1),1);
+                  const sobrepostos=evs.filter(x=>x._start<ev._end&&x._end>ev._start);
+                  ev.totalCols=sobrepostos.reduce((m,x)=>Math.max(m,x.col+1),1);
                 });
 
-                // 4. Renderiza
+                // 5. Renderiza
                 return evs.map(ev=>{
                   const st=getStatus(ev);
                   const wPct=100/ev.totalCols;
