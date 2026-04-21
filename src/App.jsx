@@ -1837,7 +1837,7 @@ const STATUS_CONFIG_R = {
 
 function getEmailUsuario(){
   const s=JSON.parse(localStorage.getItem("bibly_google_session")||"{}");
-  return s.email||localStorage.getItem("bibly_email_autorizado")||"bibi@bibly.app";
+  return s.email||localStorage.getItem("bibly_email_autorizado")||"gabrielly.oliveira@cardapioweb.com";
 }
 
 async function supaReuniaoFetch(path,options={}){
