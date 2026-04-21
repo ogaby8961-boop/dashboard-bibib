@@ -1946,6 +1946,7 @@ function isCompromissoPessoal(titulo=""){
     t.startsWith("[sdr]") ||
     t.startsWith("[águia]") ||
     t.startsWith("[aguia]") ||
+    t.startsWith("[lid]") ||
     t.includes("almoço") ||
     t.includes("almoco") ||
     t.includes("pedir reembolso") ||
@@ -2028,46 +2029,47 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
                 const solidMap={agendada:"#3b82f6",realizada:"#22c55e",noshow:"#ef4444",pessoal:"#f59e0b",cancelada:"#64748b"};
                 const getStatus=(r)=>isCompromissoPessoal(r.titulo)?"pessoal":r.status;
 
-                // 1. Calcula top/bottom de cada reunião
-                const comPos=reunioesDia.map(r=>{
+                // 1. Enriquece cada reunião com top/bot/altura
+                const evs=reunioesDia.map(r=>{
                   const top=toMin(r.hora_inicio)*(HORA_H/60);
                   const durMin=r.hora_fim?(toMin(r.hora_fim)-toMin(r.hora_inicio)):45;
                   const altura=Math.max(durMin*(HORA_H/60),26);
-                  return{...r,top,bot:top+altura,altura};
+                  return{...r,top,bot:top+altura,altura,col:0,totalCols:1};
                 });
 
-                // 2. Detecta colunas por sobreposição (estilo Google)
-                const colunas=[]; // array de arrays de eventos
-                comPos.forEach(r=>{
-                  let colocado=false;
-                  for(const col of colunas){
-                    const ultimo=col[col.length-1];
-                    if(r.top>=ultimo.bot){col.push(r);colocado=true;break;}
+                // 2. Algoritmo de colunas: para cada evento, encontra a primeira coluna livre
+                const cols=[]; // cols[i] = bot do último evento nessa coluna
+                evs.forEach(ev=>{
+                  let placed=false;
+                  for(let i=0;i<cols.length;i++){
+                    if(ev.top>=cols[i]){
+                      ev.col=i;
+                      cols[i]=ev.bot;
+                      placed=true;
+                      break;
+                    }
                   }
-                  if(!colocado)colunas.push([r]);
+                  if(!placed){ev.col=cols.length;cols.push(ev.bot);}
                 });
-                const totalCols=colunas.length;
 
-                // 3. Atribui colIdx a cada evento
-                const colIdx={};
-                colunas.forEach((col,ci)=>col.forEach(r=>colIdx[r.id]=ci));
+                // 3. Para cada evento, descobre quantas colunas existem no seu intervalo
+                evs.forEach(ev=>{
+                  ev.totalCols=evs.filter(x=>x.top<ev.bot&&x.bot>ev.top).reduce((m,x)=>Math.max(m,x.col+1),1);
+                });
 
                 // 4. Renderiza
-                return comPos.map(r=>{
-                  const st=getStatus(r);
-                  const ci=colIdx[r.id]??0;
-                  // Calcula quantas colunas se sobrepõem neste evento
-                  const colsAtivas=colunas.filter(col=>col.some(x=>x.top<r.bot&&x.bot>r.top)).length||1;
-                  const wPct=100/colsAtivas;
-                  const leftPct=ci*wPct;
+                return evs.map(ev=>{
+                  const st=getStatus(ev);
+                  const wPct=100/ev.totalCols;
+                  const leftPct=ev.col*wPct;
                   return(
-                    <div key={r.id} onClick={()=>onClicarReuniao(r)}
+                    <div key={ev.id} onClick={()=>onClicarReuniao(ev)}
                       style={{
                         position:"absolute",
                         left:`calc(${leftPct}% + 2px)`,
                         width:`calc(${wPct}% - 4px)`,
-                        top:r.top,
-                        height:r.altura,
+                        top:ev.top,
+                        height:ev.altura,
                         backgroundColor:bgMap[st]||bgMap.agendada,
                         borderLeft:`3px solid ${solidMap[st]||solidMap.agendada}`,
                         borderRadius:"0 5px 5px 0",
@@ -2075,9 +2077,8 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
                         cursor:"pointer",
                         overflow:"hidden",
                         transition:"filter 0.15s",
-                        zIndex:10,
+                        zIndex:10+ev.col,
                         boxSizing:"border-box",
-                        minWidth:0,
                       }}
                       onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.25)"}
                       onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
@@ -2090,11 +2091,11 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
                         textOverflow:"ellipsis",
                         margin:0,
                       }}>
-                        {r.hora_inicio} {r.titulo}
+                        {ev.hora_inicio} {ev.titulo}
                       </p>
-                      {r.altura>38&&r.hora_fim&&(
+                      {ev.altura>38&&ev.hora_fim&&(
                         <p style={{fontSize:8,color:"rgba(255,255,255,0.35)",margin:"1px 0 0"}}>
-                          até {r.hora_fim}
+                          até {ev.hora_fim}
                         </p>
                       )}
                     </div>
