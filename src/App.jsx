@@ -1957,66 +1957,127 @@ function isCompromissoPessoal(titulo=""){
 }
 
 function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHora, carregando}){
+  const [modoDia, setModoDia] = React.useState(false);
   const hoje=new Date();
   const inicioSem=getInicioSemanaData(new Date(diaFoco));
   const dias=Array.from({length:7},(_,i)=>{const d=new Date(inicioSem);d.setDate(inicioSem.getDate()+i);return d;});
   const porDia={};
   reunioesSemana.forEach(r=>{porDia[r.data]=porDia[r.data]||[];porDia[r.data].push(r);});
   const isHoje=(d)=>d.toDateString()===hoje.toDateString();
-  const HORA_H=52;
+  const HORA_H=56;
   const bgMap={agendada:"rgba(96,165,250,0.25)",realizada:"rgba(74,222,128,0.25)",noshow:"rgba(248,113,113,0.25)",pessoal:"rgba(245,158,11,0.22)",cancelada:"rgba(148,163,184,0.15)"};
   const solidMap={agendada:"#3b82f6",realizada:"#22c55e",noshow:"#ef4444",pessoal:"#f59e0b",cancelada:"#64748b"};
   const getStatus=(r)=>isCompromissoPessoal(r.titulo)?"pessoal":r.status;
   const hToMin=(h)=>{if(!h)return 8*60;const[hh,mm]=(h+"").split(":");return parseInt(hh||8)*60+parseInt(mm||0);};
 
   function calcLayout(reunioes){
-    const evs=reunioes.map(r=>{
+    const evs=[...reunioes].sort((a,b)=>hToMin(a.hora_inicio)-hToMin(b.hora_inicio)).map(r=>{
       const s=hToMin(r.hora_inicio);
       const e=r.hora_fim?hToMin(r.hora_fim):s+45;
       const dur=Math.max(e-s,10);
-      return{...r,s,e,dur,top:(s-8*60)*(HORA_H/60),altura:Math.max(dur*(HORA_H/60),22),col:0,cols:1};
-    }).sort((a,b)=>a.s-b.s);
-
-    // atribui colunas
+      return{...r,s,e,dur,top:(s-8*60)*(HORA_H/60),altura:Math.max(dur*(HORA_H/60),24),col:0,cols:1};
+    });
     const colFim=[];
     evs.forEach(ev=>{
       let c=0;
       while(colFim[c]!==undefined&&colFim[c]>ev.s)c++;
       ev.col=c;colFim[c]=ev.e;
     });
-    // calcula total de colunas por grupo de sobreposição
     evs.forEach(ev=>{
-      const grupo=evs.filter(x=>x.s<ev.e&&x.e>ev.s);
-      ev.cols=grupo.reduce((m,x)=>Math.max(m,x.col+1),1);
+      ev.cols=evs.filter(x=>x.s<ev.e&&x.e>ev.s).reduce((m,x)=>Math.max(m,x.col+1),1);
     });
     return evs;
   }
 
+  const isoFoco=diaFoco;
+
+  if(modoDia){
+    const evs=calcLayout(porDia[isoFoco]||[]);
+    return(
+      <div style={{borderRadius:16,border:`1px solid ${BORDER}`,backgroundColor:CARD_BG,overflow:"hidden"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:`1px solid ${BORDER}`,backgroundColor:"#0a0a14"}}>
+          <div style={{display:"flex",gap:6}}>
+            {dias.map((d,i)=>{
+              const iso=d.toISOString().split("T")[0];
+              const ativo=iso===isoFoco;
+              const eh=isHoje(d);
+              const n=(porDia[iso]||[]).length;
+              return(
+                <button key={i} onClick={()=>onClicarHora(iso,"09:00")}
+                  style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"4px 8px",borderRadius:8,border:`1px solid ${ativo?ACCENT:BORDER}`,backgroundColor:ativo?"rgba(168,85,247,0.12)":"transparent",cursor:"pointer",minWidth:40}}>
+                  <span style={{fontSize:8,fontWeight:700,color:eh?ACCENT:"#475569",textTransform:"uppercase"}}>{DIAS_SEMANA_LABEL[i]}</span>
+                  <span style={{fontSize:14,fontWeight:800,color:ativo?"#fff":eh?ACCENT:"#64748b"}}>{d.getDate()}</span>
+                  {n>0&&<span style={{fontSize:7,color:ACCENT,fontWeight:700}}>{n}</span>}
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={()=>setModoDia(false)}
+            style={{fontSize:11,fontWeight:600,color:"#94a3b8",border:`1px solid ${BORDER}`,backgroundColor:"transparent",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>
+            ← Semana
+          </button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"48px 1fr",maxHeight:500,overflowY:"auto"}}>
+          <div style={{backgroundColor:"#0a0a14"}}>
+            {HORAS_CAL.map(h=>(
+              <div key={h} style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:6,paddingTop:3}}>
+                <span style={{fontSize:9,color:"#334155",fontWeight:600}}>{String(h).padStart(2,"0")}h</span>
+              </div>
+            ))}
+          </div>
+          <div style={{position:"relative",borderLeft:`1px solid ${BORDER}`}}>
+            {HORAS_CAL.map(h=>(
+              <div key={h} onClick={()=>onClicarHora(isoFoco,`${String(h).padStart(2,"0")}:00`)}
+                style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,cursor:"pointer"}}
+                onMouseEnter={e=>e.currentTarget.style.backgroundColor="rgba(168,85,247,0.04)"}
+                onMouseLeave={e=>e.currentTarget.style.backgroundColor="transparent"}/>
+            ))}
+            {evs.map(ev=>{
+              const st=getStatus(ev);
+              const wPct=100/ev.cols;
+              const leftPct=ev.col*wPct;
+              return(
+                <div key={ev.id} onClick={e=>{e.stopPropagation();onClicarReuniao(ev);}}
+                  style={{position:"absolute",top:ev.top,height:ev.altura,left:`calc(${leftPct}% + 2px)`,width:`calc(${wPct}% - 4px)`,
+                    backgroundColor:bgMap[st]||bgMap.agendada,borderLeft:`3px solid ${solidMap[st]||solidMap.agendada}`,
+                    borderRadius:"0 6px 6px 0",padding:"3px 6px",cursor:"pointer",overflow:"hidden",boxSizing:"border-box",zIndex:10+ev.col,transition:"filter 0.12s"}}
+                  onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.25)"}
+                  onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
+                  <p style={{fontSize:11,fontWeight:700,color:solidMap[st]||solidMap.agendada,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",margin:0,lineHeight:1.3}}>
+                    {ev.hora_inicio} {ev.titulo}
+                  </p>
+                  {ev.altura>38&&ev.hora_fim&&<p style={{fontSize:9,color:"rgba(255,255,255,0.4)",margin:"1px 0 0"}}>até {ev.hora_fim}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return(
     <div style={{borderRadius:16,border:`1px solid ${BORDER}`,backgroundColor:CARD_BG,overflow:"hidden"}}>
-      {/* Header */}
       <div style={{display:"grid",gridTemplateColumns:"48px repeat(7,1fr)",borderBottom:`1px solid ${BORDER}`,backgroundColor:"#0a0a14"}}>
         <div/>
         {dias.map((d,i)=>{
           const iso=d.toISOString().split("T")[0];
-          const ativo=iso===diaFoco;
+          const ativo=iso===isoFoco;
           const eh=isHoje(d);
           const n=(porDia[iso]||[]).length;
           return(
-            <div key={i} style={{padding:"8px 2px",textAlign:"center",borderLeft:`1px solid ${BORDER}`,backgroundColor:ativo?"rgba(168,85,247,0.08)":"transparent",cursor:"pointer"}} onClick={()=>onClicarHora(iso,"09:00")}>
+            <div key={i} onClick={()=>{setModoDia(true);onClicarHora(iso,"09:00");}}
+              style={{padding:"8px 2px",textAlign:"center",borderLeft:`1px solid ${BORDER}`,backgroundColor:ativo?"rgba(168,85,247,0.08)":"transparent",cursor:"pointer"}}>
               <p style={{fontSize:9,fontWeight:700,color:eh?ACCENT:"#475569",textTransform:"uppercase",letterSpacing:"0.06em",margin:0}}>{DIAS_SEMANA_LABEL[i]}</p>
               <div style={{width:26,height:26,borderRadius:"50%",margin:"3px auto",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:eh?ACCENT:"transparent"}}>
                 <span style={{fontSize:13,fontWeight:800,color:eh?"#fff":ativo?"#e2e8f0":"#64748b"}}>{d.getDate()}</span>
               </div>
-              {n>0&&<span style={{fontSize:8,color:ACCENT,fontWeight:700}}>{n} reun.</span>}
+              {n>0&&<span style={{fontSize:8,color:ACCENT,fontWeight:600}}>{n}</span>}
             </div>
           );
         })}
       </div>
-
-      {/* Grade */}
       <div style={{display:"grid",gridTemplateColumns:"48px repeat(7,1fr)",maxHeight:420,overflowY:"auto",position:"relative"}}>
-        {/* Horas */}
         <div style={{backgroundColor:"#0a0a14"}}>
           {HORAS_CAL.map(h=>(
             <div key={h} style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:6,paddingTop:3}}>
@@ -2024,17 +2085,14 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
             </div>
           ))}
         </div>
-
-        {/* Dias */}
         {dias.map((d,di)=>{
           const iso=d.toISOString().split("T")[0];
-          const ativo=iso===diaFoco;
-          const raw=(porDia[iso]||[]);
-          const evs=calcLayout(raw);
+          const ativo=iso===isoFoco;
+          const evs=calcLayout(porDia[iso]||[]);
           return(
             <div key={di} style={{borderLeft:`1px solid ${BORDER}`,position:"relative",backgroundColor:ativo?"rgba(168,85,247,0.02)":"transparent"}}>
               {HORAS_CAL.map(h=>(
-                <div key={h} onClick={()=>onClicarHora(iso,`${String(h).padStart(2,"0")}:00`)}
+                <div key={h} onClick={()=>{setModoDia(true);onClicarHora(iso,`${String(h).padStart(2,"0")}:00`);}}
                   style={{height:HORA_H,borderBottom:`1px solid ${BORDER}`,cursor:"pointer"}}
                   onMouseEnter={e=>e.currentTarget.style.backgroundColor="rgba(168,85,247,0.04)"}
                   onMouseLeave={e=>e.currentTarget.style.backgroundColor="transparent"}/>
@@ -2044,23 +2102,14 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
                 const wPct=100/ev.cols;
                 const leftPct=ev.col*wPct;
                 return(
-                  <div key={ev.id} onClick={e=>{e.stopPropagation();onClicarReuniao(ev);}}
-                    style={{
-                      position:"absolute",
-                      top:ev.top,height:ev.altura,
-                      left:`calc(${leftPct}% + 1px)`,
-                      width:`calc(${wPct}% - 2px)`,
+                  <div key={ev.id} onClick={e=>{e.stopPropagation();setModoDia(true);onClicarHora(iso,"09:00");}}
+                    style={{position:"absolute",top:ev.top,height:ev.altura,
+                      left:`calc(${leftPct}% + 1px)`,width:`calc(${wPct}% - 2px)`,
                       backgroundColor:bgMap[st]||bgMap.agendada,
                       borderLeft:`2px solid ${solidMap[st]||solidMap.agendada}`,
-                      borderRadius:"0 4px 4px 0",
-                      padding:"1px 3px",cursor:"pointer",
-                      overflow:"hidden",boxSizing:"border-box",
-                      zIndex:10+ev.col,
-                      transition:"filter 0.12s",
-                    }}
-                    onMouseEnter={e=>e.currentTarget.style.filter="brightness(1.3)"}
-                    onMouseLeave={e=>e.currentTarget.style.filter="brightness(1)"}>
-                    <p style={{fontSize:8,fontWeight:700,color:solidMap[st]||solidMap.agendada,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",margin:0,lineHeight:1.3}}>
+                      borderRadius:"0 3px 3px 0",padding:"1px 2px",cursor:"pointer",
+                      overflow:"hidden",boxSizing:"border-box",zIndex:10+ev.col}}>
+                    <p style={{fontSize:7,fontWeight:700,color:solidMap[st]||solidMap.agendada,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",margin:0,lineHeight:1.3}}>
                       {ev.hora_inicio} {ev.titulo}
                     </p>
                   </div>
@@ -2070,11 +2119,9 @@ function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHor
           );
         })}
       </div>
-      {carregando&&(
-        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:"rgba(7,7,15,0.5)",borderRadius:16}}>
-          <Loader2 size={22} style={{color:ACCENT,animation:"spin 0.7s linear infinite"}}/>
-        </div>
-      )}
+      <div style={{padding:"6px 12px",borderTop:`1px solid ${BORDER}`,backgroundColor:"#0a0a14",textAlign:"center"}}>
+        <span style={{fontSize:10,color:"#334155"}}>Clique num dia para ver em detalhe</span>
+      </div>
     </div>
   );
 }
