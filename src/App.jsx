@@ -2641,14 +2641,6 @@ function Sidebar({ aberta, aba, setAba, onLogout, onFechar }) {
   const emailSalvo = localStorage.getItem("bibly_email_autorizado") || "";
 
   const hoje = new Date();
-  const [mesVis, setMesVis] = useState({ year: hoje.getFullYear(), month: hoje.getMonth() });
-  const primeiroDia = new Date(mesVis.year, mesVis.month, 1).getDay();
-  const diasNoMes = new Date(mesVis.year, mesVis.month + 1, 0).getDate();
-  const nomeMes = new Date(mesVis.year, mesVis.month).toLocaleDateString("pt-BR", { month: "long" });
-  const cells = [];
-  for (let i = 0; i < primeiroDia; i++) cells.push(null);
-  for (let d = 1; d <= diasNoMes; d++) cells.push(d);
-
   return (
     <>
       {/* Overlay */}
@@ -2743,78 +2735,6 @@ function Sidebar({ aberta, aba, setAba, onLogout, onFechar }) {
               </button>
             );
           })}
-        </div>
-
-        {/* Divisor */}
-        <div style={{ height: 1, backgroundColor: BORDER, margin: "10px 18px", flexShrink: 0 }} />
-
-        {/* Mini Calendário */}
-        <div style={{ margin: "0 12px", padding: 14, borderRadius: 14, backgroundColor: CARD_BG, border: `1px solid ${BORDER}`, flexShrink: 0 }}>
-          {/* Header mês */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <button
-              onClick={() => setMesVis(v => { const d = new Date(v.year, v.month - 1); return { year: d.getFullYear(), month: d.getMonth() }; })}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", padding: "2px 5px", fontSize: 16, display: "flex", borderRadius: 4 }}
-              onMouseEnter={e => e.currentTarget.style.color = "#e2e8f0"}
-              onMouseLeave={e => e.currentTarget.style.color = "#475569"}
-            >‹</button>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "capitalize" }}>{nomeMes} {mesVis.year}</span>
-            <button
-              onClick={() => setMesVis(v => { const d = new Date(v.year, v.month + 1); return { year: d.getFullYear(), month: d.getMonth() }; })}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "#475569", padding: "2px 5px", fontSize: 16, display: "flex", borderRadius: 4 }}
-              onMouseEnter={e => e.currentTarget.style.color = "#e2e8f0"}
-              onMouseLeave={e => e.currentTarget.style.color = "#475569"}
-            >›</button>
-          </div>
-          {/* Dias da semana */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
-            {["D","S","T","Q","Q","S","S"].map((d, i) => (
-              <div key={i} style={{ textAlign: "center", fontSize: 9, color: "#334155", fontWeight: 700, padding: "2px 0" }}>{d}</div>
-            ))}
-          </div>
-          {/* Células */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
-            {cells.map((d, i) => {
-              const isHoje = d === hoje.getDate() && mesVis.month === hoje.getMonth() && mesVis.year === hoje.getFullYear();
-              return (
-                <div key={i} style={{
-                  textAlign: "center", fontSize: 10, padding: "4px 0", borderRadius: 6,
-                  backgroundColor: isHoje ? ACCENT : "transparent",
-                  color: isHoje ? "#fff" : d ? "#64748b" : "transparent",
-                  fontWeight: isHoje ? 800 : 400,
-                }}>{d || ""}</div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Divisor */}
-        <div style={{ height: 1, backgroundColor: BORDER, margin: "12px 18px", flexShrink: 0 }} />
-
-        {/* Ações rápidas */}
-        <div style={{ padding: "0 12px", flexShrink: 0 }}>
-          <p style={{ fontSize: 10, color: "#334155", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "0 8px", marginBottom: 6 }}>Ações Rápidas</p>
-          {[
-            { label: "Reuniões de hoje", icon: Bell, id: "calendario" },
-            { label: "Atualizar dados", icon: RefreshCw, id: "dados" },
-            { label: "Ver metas", icon: Target, id: "resultados" },
-          ].map(({ label, icon: Icon, id }) => (
-            <button
-              key={id}
-              onClick={() => { setAba(id); onFechar(); }}
-              style={{
-                display: "flex", alignItems: "center", gap: 10, width: "100%",
-                padding: "9px 10px", borderRadius: 10, border: "none", cursor: "pointer",
-                backgroundColor: "transparent", color: "#64748b",
-                fontSize: 13, fontWeight: 500, marginBottom: 2, transition: "all 0.15s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#e2e8f0"; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#64748b"; }}
-            >
-              <Icon size={14} style={{ flexShrink: 0 }} />
-              {label}
-            </button>
-          ))}
         </div>
 
         {/* Rodapé — Sair */}
