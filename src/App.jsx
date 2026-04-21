@@ -1957,7 +1957,7 @@ function isCompromissoPessoal(titulo=""){
 }
 
 function CalendarioVisual({reunioesSemana, diaFoco, onClicarReuniao, onClicarHora, carregando}){
-  const [modoDia, setModoDia] = React.useState(false);
+  const [modoDia, setModoDia] = useState(false);
   const hoje=new Date();
   const inicioSem=getInicioSemanaData(new Date(diaFoco));
   const dias=Array.from({length:7},(_,i)=>{const d=new Date(inicioSem);d.setDate(inicioSem.getDate()+i);return d;});
