@@ -2448,7 +2448,7 @@ function getSaudacaoPorFuso(tz){
 
 // ─── STORAGE PERFIL ───────────────────────────────────────────
 const STORAGE_PERFIL = "bibly_perfil";
-const PERFIL_DEFAULT = { nome: "Gabrielly", inicial: "G", humor: "", humorEmoji: "" };
+const PERFIL_DEFAULT = { nome: "Gabrielly", inicial: "G", humor: "", humorEmoji: "", foto: "" };
 
 const HUMORES_SUGERIDOS = [
   { emoji: "🔥", texto: "Hoje tô no modo máquina" },
@@ -2503,15 +2503,31 @@ function ModalPerfil({ onFechar }) {
           </button>
         </div>
 
-        {/* Avatar preview */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: "50%",
-            background: "linear-gradient(135deg,#6d28d9,#a855f7)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 28, fontWeight: 900, color: "#fff",
-            border: "3px solid rgba(168,85,247,0.4)",
-          }}>{(draft.inicial || draft.nome?.[0] || "G").toUpperCase()}</div>
+        {/* Avatar preview + upload */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24, gap: 10 }}>
+          <div style={{ position: "relative" }}>
+            {draft.foto
+              ? <img src={draft.foto} alt="avatar" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "3px solid rgba(168,85,247,0.4)" }} />
+              : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#6d28d9,#a855f7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900, color: "#fff", border: "3px solid rgba(168,85,247,0.4)" }}>{(draft.inicial || draft.nome?.[0] || "G").toUpperCase()}</div>
+            }
+            <label style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", backgroundColor: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "2px solid #0f0f18" }}
+              title="Trocar foto">
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => setDraft(d => ({ ...d, foto: ev.target.result }));
+                reader.readAsDataURL(file);
+              }} />
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </label>
+          </div>
+          {draft.foto && (
+            <button onClick={() => setDraft(d => ({ ...d, foto: "" }))}
+              style={{ fontSize: 10, color: "#f87171", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              Remover foto
+            </button>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -3025,22 +3041,16 @@ function Dashboard({ onLogout }) {
           {/* Avatar clicável */}
           {(() => {
             const p = storageGet(STORAGE_PERFIL) ?? PERFIL_DEFAULT;
-            return (
-              <div
-                onClick={() => setPerfilAberto(true)}
-                title={`${p.nome} · clique para editar perfil`}
-                style={{
-                  width: 32, height: 32, borderRadius: "50%",
-                  background: "linear-gradient(135deg,#6d28d9,#a855f7)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", fontSize: 12, fontWeight: 800, color: "#fff",
-                  flexShrink: 0, border: "2px solid rgba(168,85,247,0.3)", marginLeft: 12,
-                  transition: "border-color 0.2s",
-                }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(168,85,247,0.7)"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(168,85,247,0.3)"}
-              >{(p.inicial || p.nome?.[0] || "G").toUpperCase()}</div>
-            );
+            return p.foto
+              ? <img src={p.foto} alt="avatar" onClick={() => setPerfilAberto(true)} title={`${p.nome} · clique para editar perfil`}
+                  style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", cursor: "pointer", flexShrink: 0, border: "2px solid rgba(168,85,247,0.3)", marginLeft: 12, transition: "border-color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(168,85,247,0.7)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(168,85,247,0.3)"} />
+              : <div onClick={() => setPerfilAberto(true)} title={`${p.nome} · clique para editar perfil`}
+                  style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#6d28d9,#a855f7)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12, fontWeight: 800, color: "#fff", flexShrink: 0, border: "2px solid rgba(168,85,247,0.3)", marginLeft: 12, transition: "border-color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(168,85,247,0.7)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(168,85,247,0.3)"}
+                >{(p.inicial || p.nome?.[0] || "G").toUpperCase()}</div>;
           })()}
         </div>
       </header>
