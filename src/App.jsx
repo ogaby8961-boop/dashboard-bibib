@@ -804,8 +804,14 @@ function NegociosMes() {
 function TabResultados({abrilAtual,diarioAtual,humorKey}){
   const [registros,setRegistros]=useState(()=>storageGet(STORAGE_GANHOS)??[]);
   const [salvo,setSalvo]=useState(false);
+  const [reunioesHoje,setReunioesHoje]=useState(null);
   const totalManual=registros.reduce((s,r)=>s+r.quantidade,0);
   const clientesStatus=abrilAtual.clientes+totalManual;
+
+  useEffect(()=>{
+    buscarReunioes(hojeISO()).then(r=>setReunioesHoje(r)).catch(()=>setReunioesHoje([]));
+  },[]);
+
   const handleAddGanho=()=>{
     const dataHoje=new Date().toLocaleDateString("pt-BR");
     const nova=[...registros,{data:dataHoje,quantidade:1,obs:"Ajuste rapido",id:_nextId++}];
@@ -823,6 +829,22 @@ function TabResultados({abrilAtual,diarioAtual,humorKey}){
   const handleSalvarGanhos=()=>{ storageSet(STORAGE_GANHOS,registros); setSalvo(true); setTimeout(()=>setSalvo(false),3000); };
   return(
     <div className="space-y-6">
+      {/* Aviso de reuniões de hoje */}
+      {reunioesHoje !== null && (
+        <div style={{
+          display:"flex", alignItems:"center", gap:12, padding:"12px 18px",
+          borderRadius:14, border:`1px solid ${reunioesHoje.length > 0 ? "rgba(168,85,247,0.35)" : "rgba(100,116,139,0.2)"}`,
+          backgroundColor: reunioesHoje.length > 0 ? "rgba(168,85,247,0.08)" : "rgba(15,15,24,0.6)",
+        }}>
+          <Calendar size={15} style={{color: reunioesHoje.length > 0 ? ACCENT : "#475569", flexShrink:0}}/>
+          <p style={{fontSize:13, fontWeight:600, color: reunioesHoje.length > 0 ? "#e2e8f0" : "#475569", margin:0}}>
+            {reunioesHoje.length > 0
+              ? <>Hoje você tem <span style={{color:ACCENT, fontWeight:800}}>{reunioesHoje.length} reunião{reunioesHoje.length > 1 ? "s" : ""}</span> agendada{reunioesHoje.length > 1 ? "s" : ""} — <span style={{color:"#94a3b8", fontWeight:400}}>{reunioesHoje.filter(r=>r.status==="realizada").length} realizada{reunioesHoje.filter(r=>r.status==="realizada").length !== 1 ? "s" : ""}, {reunioesHoje.filter(r=>r.status==="noshow").length} no-show{reunioesHoje.filter(r=>r.status==="noshow").length !== 1 ? "s" : ""}</span></>
+              : "Nenhuma reunião agendada para hoje."
+            }
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 items-start">
         <StatusMeta clientesTotal={clientesStatus} dadosAbril={abrilAtual} onAddGanho={handleAddGanho} onRemoveGanho={handleRemoveGanho} onSalvarGanho={handleSalvarGanhos} onSalvoGanho={salvo}/>
       </div>
@@ -1746,7 +1768,7 @@ function TabCarreira(){return <div className="space-y-5"><NivelAtual/><LinksImpo
 
 // ─── HOME / BOAS-VINDAS ───────────────────────────────────────
 const HOME_CARDS = [
-  {id:"resultados",    label:"Resultados",      desc:"Metas, métricas e forecast do mês em tempo real.",  cor:"#a855f7"},
+  {id:"resultados",    label:"Metas",            desc:"Metas, métricas e forecast do mês em tempo real.",  cor:"#a855f7"},
   {id:"dados",         label:"Dados",            desc:"Performance, gráficos e importação de planilha.",    cor:"#60a5fa"},
   {id:"calendario",    label:"Calendário",       desc:"Reuniões, no-shows e taxa semanal de presença.",    cor:"#f87171"},
   {id:"lideranca",     label:"Estudos",          desc:"Liderança e desenvolvimento profissional.",         cor:"#818cf8"},
@@ -2257,6 +2279,12 @@ function TabReunioes(){
         </div>
         {/* Ações */}
         <div style={{display:"flex",gap:8}}>
+          <a href="https://agendar-reunioes-closer.vercel.app/" target="_blank" rel="noopener noreferrer"
+            style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,border:`1px solid rgba(168,85,247,0.4)`,backgroundColor:"rgba(168,85,247,0.08)",color:ACCENT,fontSize:12,fontWeight:600,cursor:"pointer",textDecoration:"none",transition:"all 0.2s"}}
+            onMouseEnter={e=>{e.currentTarget.style.backgroundColor="rgba(168,85,247,0.18)";}}
+            onMouseLeave={e=>{e.currentTarget.style.backgroundColor="rgba(168,85,247,0.08)";}}>
+            <ExternalLink size={13}/> Agendar reunião
+          </a>
           <button onClick={()=>setMostrarImport(v=>!v)}
             style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:10,border:`1px solid ${mostrarImport?ACCENT:BORDER}`,backgroundColor:mostrarImport?"rgba(168,85,247,0.1)":"transparent",color:mostrarImport?ACCENT:"#94a3b8",fontSize:12,fontWeight:600,cursor:"pointer"}}>
             <RefreshCw size={13}/> Sincronizar
@@ -2317,7 +2345,7 @@ function TabReunioes(){
 }
 
 const TABS=[
-  {id:"resultados",label:"Resultados",icon:Target},
+  {id:"resultados",label:"Metas",icon:Target},
   {id:"calendario",label:"Calendário",icon:Calendar},
   {id:"dados",label:"Dados",icon:BarChart2},
   {id:"lideranca",label:"Estudos",icon:Star},
@@ -2684,7 +2712,7 @@ function Sidebar({ aberta, aba, setAba, onLogout, onFechar }) {
           {[
             { label: "Reuniões de hoje", icon: Bell, id: "calendario" },
             { label: "Atualizar dados", icon: RefreshCw, id: "dados" },
-            { label: "Ver resultados", icon: Target, id: "resultados" },
+            { label: "Ver metas", icon: Target, id: "resultados" },
           ].map(({ label, icon: Icon, id }) => (
             <button
               key={id}
@@ -2820,7 +2848,7 @@ function Dashboard({ onLogout }) {
         borderBottom: `1px solid ${scrolled ? BORDER : "transparent"}`,
         transition: "all 0.3s",
       }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", height: 60, display: "flex", alignItems: "center", gap: 0 }}>
+        <div style={{ maxWidth: "100%", margin: "0 auto", padding: "0 32px", height: 60, display: "flex", alignItems: "center", gap: 0 }}>
 
           {/* Botão Menu */}
           <button
@@ -2933,7 +2961,7 @@ function Dashboard({ onLogout }) {
           </p>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
             <h1 style={{ fontSize: 26, fontWeight: 900, color: "#fff", letterSpacing: "-0.5px", margin: 0 }}>
-              {aba === "resultados" && "Metas e Métricas do Mês"}
+              {aba === "resultados" && "Metas do Mês"}
               {aba === "dados" && "Dados e Planilha"}
               {aba === "calendario" && "Calendário"}
               {aba === "lideranca" && "Estudos e Desenvolvimento"}
