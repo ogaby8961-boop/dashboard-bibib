@@ -7,7 +7,7 @@ import {
   Link, ExternalLink, Edit3, Save, X, Headphones,
   Eye, EyeOff, LogOut, Table, BarChart2, Bell,
   RefreshCw, Moon, Sun, Sunset, ChevronRight, ChevronDown,
-  Loader2, FileText,
+  Loader2, FileText, Send,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -2414,11 +2414,137 @@ function TabReunioes(){
   );
 }
 
+// ─── RAVENNA IA ───────────────────────────────────────────────
+const RAVENNA_URL = "https://ibrgjaaaduzkpmfyopdm.supabase.co/functions/v1/chat-objecoes";
+const RAVENNA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlicmdqYWFhZHV6a3BtZnlvcGRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MDIzNDUsImV4cCI6MjA5MjQ3ODM0NX0.3QmjE3hnZvCWByw7HF-o9B-TtWNG5jSRlTVWKJtNO5Q";
+const RAVENNA_INICIAL = { role:"assistant", content:"Oi Gabi! 👋 Sou a **Ravenna**, sua parceira de vendas.\n\nMe conta qual objeção o lead te jogou e eu te devolvo:\n\n- Entendimento da real preocupação\n- Reenquadramento estratégico\n- Script pronto pra mandar no WhatsApp\n- Dica rápida pra fechar\n\nPode escrever do seu jeito ou clicar numa das sugestões abaixo 👇" };
+const RAVENNA_SUGESTOES = ["Tá caro, não cabe no orçamento","Preciso falar com meu sócio","Concorrente já me dá de graça","Vou pensar e te retorno","Já tenho outro sistema","Não é o momento agora"];
+
+function TabRavenna() {
+  const [messages, setMessages] = useState([RAVENNA_INICIAL]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, loading]);
+
+  const send = async (text) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+    const userMsg = { role:"user", content:trimmed };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    setInput("");
+    setLoading(true);
+    let assistantSoFar = "";
+    let started = false;
+    try {
+      const resp = await fetch(RAVENNA_URL, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", Authorization:`Bearer ${RAVENNA_KEY}` },
+        body:JSON.stringify({ messages: history.filter(m=>m!==RAVENNA_INICIAL).map(m=>({role:m.role,content:m.content})) }),
+      });
+      if (!resp.ok || !resp.body) {
+        setMessages(prev=>[...prev,{role:"assistant",content:"Erro ao conectar com a Ravenna. Tente novamente."}]);
+        setLoading(false); return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, {stream:true});
+        let idx;
+        while ((idx = buf.indexOf("\n")) !== -1) {
+          let line = buf.slice(0,idx).replace(/\r$/,"");
+          buf = buf.slice(idx+1);
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (json==="[DONE]") break;
+          try {
+            const delta = JSON.parse(json).choices?.[0]?.delta?.content;
+            if (delta) {
+              assistantSoFar += delta;
+              setMessages(prev => {
+                if (!started) { started=true; return [...prev,{role:"assistant",content:assistantSoFar}]; }
+                return prev.map((m,i)=>i===prev.length-1?{...m,content:assistantSoFar}:m);
+              });
+            }
+          } catch {}
+        }
+      }
+    } catch { setMessages(prev=>[...prev,{role:"assistant",content:"Erro de conexão. Verifique sua internet."}]); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 180px)",gap:12}}>
+      {/* Mensagens */}
+      <div ref={scrollRef} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12,padding:16,backgroundColor:CARD_BG,border:`1px solid ${BORDER}`,borderRadius:16}}>
+        {messages.map((msg,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",gap:10,alignItems:"flex-end"}}>
+            {msg.role==="assistant" && (
+              <div style={{width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <MessageSquare size={15} color="#fff"/>
+              </div>
+            )}
+            <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:msg.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",backgroundColor:msg.role==="user"?ACCENT_DIM:"#1a1a2e",border:msg.role==="assistant"?`1px solid ${BORDER}`:"none",color:"#e2e8f0",fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        {loading && messages[messages.length-1]?.role==="user" && (
+          <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <MessageSquare size={15} color="#fff"/>
+            </div>
+            <div style={{padding:"12px 16px",borderRadius:"16px 16px 16px 4px",backgroundColor:"#1a1a2e",border:`1px solid ${BORDER}`,display:"flex",gap:5,alignItems:"center"}}>
+              {[0,200,400].map(d=><span key={d} style={{width:7,height:7,borderRadius:"50%",backgroundColor:ACCENT,display:"inline-block",animation:"pulse 1.2s ease-in-out infinite",animationDelay:`${d}ms`}}/>)}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sugestões */}
+      {messages.length===1 && (
+        <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+          {RAVENNA_SUGESTOES.map(s=>(
+            <button key={s} onClick={()=>send(s)} disabled={loading}
+              style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${BORDER}`,backgroundColor:"rgba(168,85,247,0.08)",color:"#94a3b8",fontSize:12,cursor:"pointer",transition:"all 0.15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=ACCENT;e.currentTarget.style.color="#e2e8f0";}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor=BORDER;e.currentTarget.style.color="#94a3b8";}}>
+              ✨ {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <div style={{display:"flex",gap:8,padding:"10px 12px",backgroundColor:CARD_BG,border:`1px solid ${BORDER}`,borderRadius:14}}>
+        <textarea value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(input);}}}
+          placeholder="Digite a objeção do lead..."
+          disabled={loading} rows={1}
+          style={{flex:1,backgroundColor:"transparent",border:"none",outline:"none",color:"#e2e8f0",fontSize:13,resize:"none",minHeight:40,maxHeight:120,fontFamily:"inherit"}}/>
+        <button onClick={()=>send(input)} disabled={!input.trim()||loading}
+          style={{width:38,height:38,borderRadius:10,border:"none",cursor:"pointer",background:!input.trim()||loading?"#1e1b2e":`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"background 0.2s"}}>
+          <Send size={16}/>
+        </button>
+      </div>
+      <p style={{textAlign:"center",fontSize:11,color:"#334155"}}>Enter envia · Shift+Enter quebra linha</p>
+    </div>
+  );
+}
+
 const TABS=[
   {id:"resultados",label:"Metas",icon:Target},
   {id:"dados",label:"Dados",icon:BarChart2},
   {id:"lideranca",label:"Estudos",icon:Star},
   {id:"carreira",label:"Trilha de Carreira",icon:Rocket},
+  {id:"ravenna",label:"Ravenna IA",icon:MessageSquare},
 ];
 
 function getSaudacaoPorFuso(tz){
@@ -2968,6 +3094,7 @@ function Dashboard({ onLogout }) {
               {aba === "dados" && "Dados e Planilha"}
               {aba === "lideranca" && "Estudos e Desenvolvimento"}
               {aba === "carreira" && "Trilha de Carreira"}
+              {aba === "ravenna" && "Ravenna IA — Objeções"}
             </h1>
             <span style={{ fontSize: 11, color: "#475569", letterSpacing: "0.1em", fontWeight: 600, textTransform: "uppercase" }}>
               Seu dashboard, sua inteligência
@@ -2980,6 +3107,7 @@ function Dashboard({ onLogout }) {
           {aba === "dados" && <TabDados abrilAtual={abrilAtual} dadosPlanilha={dadosPlanilha} onDadosImportados={handleDadosImportados} preview={dadosPlanilha} syncInfo={syncInfo} salvando={salvando} salvoOk={salvoOk} onSalvarSupabase={handleSalvarSupabase} />}
           {aba === "lideranca" && <TabLideranca />}
           {aba === "carreira" && <TabCarreira />}
+          {aba === "ravenna" && <TabRavenna />}
           <p style={{ textAlign: "center", fontSize: 11, color: "#1e1b2e", marginTop: 48 }}>[Resultados] [bibi] · 2026</p>
         </main>
       </div>
@@ -2987,6 +3115,7 @@ function Dashboard({ onLogout }) {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes pulse { 0%,100% { opacity:0.3; transform:scale(0.8) } 50% { opacity:1; transform:scale(1) } }
         input::placeholder, textarea::placeholder { color: #334155 }
         * { box-sizing: border-box }
         ::-webkit-scrollbar { width: 4px }
