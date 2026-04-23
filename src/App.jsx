@@ -2430,6 +2430,8 @@ function TabRavenna() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, loading]);
 
+  const reset = () => { setMessages([RAVENNA_INICIAL]); setInput(""); };
+
   const send = async (text) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
@@ -2481,28 +2483,55 @@ function TabRavenna() {
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 180px)",gap:12}}>
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 210px)",backgroundColor:"#0f0f18",border:`1px solid ${BORDER}`,borderRadius:20,overflow:"hidden"}}>
+
+      {/* Cabeçalho */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 22px",borderBottom:`1px solid ${BORDER}`,flexShrink:0,backgroundColor:"#0f0f18"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:44,height:44,borderRadius:13,background:`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 24px rgba(168,85,247,0.45)`,flexShrink:0}}>
+            <MessageSquare size={20} color="#fff"/>
+          </div>
+          <div>
+            <p style={{fontSize:17,fontWeight:800,color:"#fff",margin:0,letterSpacing:"-0.3px",lineHeight:1.2}}>Ravenna</p>
+            <p style={{fontSize:12,color:"#64748b",margin:0,marginTop:2}}>Sua parceira de vendas</p>
+          </div>
+        </div>
+        <button onClick={reset}
+          style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:`1px solid ${BORDER}`,backgroundColor:"transparent",color:"#64748b",fontSize:12,fontWeight:500,cursor:"pointer",transition:"all 0.15s"}}
+          onMouseEnter={e=>{e.currentTarget.style.color="#e2e8f0";e.currentTarget.style.borderColor="rgba(168,85,247,0.45)";}}
+          onMouseLeave={e=>{e.currentTarget.style.color="#64748b";e.currentTarget.style.borderColor=BORDER;}}>
+          <RefreshCw size={13}/> Nova conversa
+        </button>
+      </div>
+
       {/* Mensagens */}
-      <div ref={scrollRef} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12,padding:16,backgroundColor:CARD_BG,border:`1px solid ${BORDER}`,borderRadius:16}}>
+      <div ref={scrollRef} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:18,padding:"24px 28px"}}>
         {messages.map((msg,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",gap:10,alignItems:"flex-end"}}>
+          <div key={i} style={{display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",gap:12,alignItems:"flex-end"}}>
             {msg.role==="assistant" && (
-              <div style={{width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                <MessageSquare size={15} color="#fff"/>
+              <div style={{width:36,height:36,borderRadius:"50%",background:`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 14px rgba(168,85,247,0.35)`}}>
+                <MessageSquare size={16} color="#fff"/>
               </div>
             )}
-            <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:msg.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",backgroundColor:msg.role==="user"?ACCENT_DIM:"#1a1a2e",border:msg.role==="assistant"?`1px solid ${BORDER}`:"none",color:"#e2e8f0",fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+            <div style={{
+              maxWidth:"72%",padding:"13px 18px",
+              borderRadius:msg.role==="user"?"20px 20px 5px 20px":"20px 20px 20px 5px",
+              background:msg.role==="user"?`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`:"#1a1a2e",
+              border:msg.role==="assistant"?`1px solid ${BORDER}`:"none",
+              color:"#e2e8f0",fontSize:14,lineHeight:1.7,whiteSpace:"pre-wrap",
+              boxShadow:msg.role==="user"?"0 4px 16px rgba(168,85,247,0.3)":"0 2px 8px rgba(0,0,0,0.4)",
+            }}>
               {msg.content}
             </div>
           </div>
         ))}
         {loading && messages[messages.length-1]?.role==="user" && (
-          <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
-            <div style={{width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <MessageSquare size={15} color="#fff"/>
+          <div style={{display:"flex",gap:12,alignItems:"flex-end"}}>
+            <div style={{width:36,height:36,borderRadius:"50%",background:`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <MessageSquare size={16} color="#fff"/>
             </div>
-            <div style={{padding:"12px 16px",borderRadius:"16px 16px 16px 4px",backgroundColor:"#1a1a2e",border:`1px solid ${BORDER}`,display:"flex",gap:5,alignItems:"center"}}>
-              {[0,200,400].map(d=><span key={d} style={{width:7,height:7,borderRadius:"50%",backgroundColor:ACCENT,display:"inline-block",animation:"pulse 1.2s ease-in-out infinite",animationDelay:`${d}ms`}}/>)}
+            <div style={{padding:"14px 20px",borderRadius:"20px 20px 20px 5px",backgroundColor:"#1a1a2e",border:`1px solid ${BORDER}`,display:"flex",gap:6,alignItems:"center"}}>
+              {[0,200,400].map(d=><span key={d} style={{width:8,height:8,borderRadius:"50%",backgroundColor:ACCENT,display:"inline-block",animation:"pulse 1.2s ease-in-out infinite",animationDelay:`${d}ms`}}/>)}
             </div>
           </div>
         )}
@@ -2510,12 +2539,12 @@ function TabRavenna() {
 
       {/* Sugestões */}
       {messages.length===1 && (
-        <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+        <div style={{padding:"0 28px 14px",display:"flex",flexWrap:"wrap",gap:8,flexShrink:0}}>
           {RAVENNA_SUGESTOES.map(s=>(
             <button key={s} onClick={()=>send(s)} disabled={loading}
-              style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${BORDER}`,backgroundColor:"rgba(168,85,247,0.08)",color:"#94a3b8",fontSize:12,cursor:"pointer",transition:"all 0.15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor=ACCENT;e.currentTarget.style.color="#e2e8f0";}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor=BORDER;e.currentTarget.style.color="#94a3b8";}}>
+              style={{padding:"7px 16px",borderRadius:20,border:`1px solid ${BORDER}`,backgroundColor:"rgba(168,85,247,0.07)",color:"#94a3b8",fontSize:12,cursor:"pointer",transition:"all 0.15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=ACCENT;e.currentTarget.style.color="#e2e8f0";e.currentTarget.style.backgroundColor="rgba(168,85,247,0.15)";}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor=BORDER;e.currentTarget.style.color="#94a3b8";e.currentTarget.style.backgroundColor="rgba(168,85,247,0.07)";}}>
               ✨ {s}
             </button>
           ))}
@@ -2523,18 +2552,22 @@ function TabRavenna() {
       )}
 
       {/* Input */}
-      <div style={{display:"flex",gap:8,padding:"10px 12px",backgroundColor:CARD_BG,border:`1px solid ${BORDER}`,borderRadius:14}}>
-        <textarea value={input} onChange={e=>setInput(e.target.value)}
-          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(input);}}}
-          placeholder="Digite a objeção do lead..."
-          disabled={loading} rows={1}
-          style={{flex:1,backgroundColor:"transparent",border:"none",outline:"none",color:"#e2e8f0",fontSize:13,resize:"none",minHeight:40,maxHeight:120,fontFamily:"inherit"}}/>
-        <button onClick={()=>send(input)} disabled={!input.trim()||loading}
-          style={{width:38,height:38,borderRadius:10,border:"none",cursor:"pointer",background:!input.trim()||loading?"#1e1b2e":`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"background 0.2s"}}>
-          <Send size={16}/>
-        </button>
+      <div style={{padding:"12px 22px 18px",borderTop:`1px solid ${BORDER}`,flexShrink:0}}>
+        <div style={{display:"flex",gap:10,padding:"11px 16px",backgroundColor:"#111118",border:`1px solid ${BORDER}`,borderRadius:16,transition:"border-color 0.2s"}}
+          onFocusCapture={e=>e.currentTarget.style.borderColor="rgba(168,85,247,0.5)"}
+          onBlurCapture={e=>e.currentTarget.style.borderColor=BORDER}>
+          <textarea value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(input);}}}
+            placeholder="Digite a objeção do lead..."
+            disabled={loading} rows={1}
+            style={{flex:1,backgroundColor:"transparent",border:"none",outline:"none",color:"#e2e8f0",fontSize:13.5,resize:"none",minHeight:44,maxHeight:150,fontFamily:"inherit",lineHeight:1.6}}/>
+          <button onClick={()=>send(input)} disabled={!input.trim()||loading}
+            style={{width:42,height:42,borderRadius:12,border:"none",cursor:"pointer",background:!input.trim()||loading?"#1e1b2e":`linear-gradient(135deg,${ACCENT_DIM},${ACCENT})`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,alignSelf:"flex-end",transition:"all 0.2s",boxShadow:!input.trim()||loading?"none":`0 0 18px rgba(168,85,247,0.45)`}}>
+            <Send size={17}/>
+          </button>
+        </div>
+        <p style={{textAlign:"center",fontSize:11,color:"#334155",marginTop:9}}>Enter envia · Shift+Enter quebra linha</p>
       </div>
-      <p style={{textAlign:"center",fontSize:11,color:"#334155"}}>Enter envia · Shift+Enter quebra linha</p>
     </div>
   );
 }
@@ -2544,7 +2577,7 @@ const TABS=[
   {id:"dados",label:"Dados",icon:BarChart2},
   {id:"lideranca",label:"Estudos",icon:Star},
   {id:"carreira",label:"Trilha de Carreira",icon:Rocket},
-  {id:"ravenna",label:"Ravenna IA",icon:MessageSquare},
+  {id:"ravenna",label:"Ravenna",icon:MessageSquare},
 ];
 
 function getSaudacaoPorFuso(tz){
@@ -3094,7 +3127,7 @@ function Dashboard({ onLogout }) {
               {aba === "dados" && "Dados e Planilha"}
               {aba === "lideranca" && "Estudos e Desenvolvimento"}
               {aba === "carreira" && "Trilha de Carreira"}
-              {aba === "ravenna" && "Ravenna IA — Objeções"}
+              {aba === "ravenna" && "Ravenna"}
             </h1>
             <span style={{ fontSize: 11, color: "#475569", letterSpacing: "0.1em", fontWeight: 600, textTransform: "uppercase" }}>
               Seu dashboard, sua inteligência
